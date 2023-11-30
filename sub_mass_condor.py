@@ -22,7 +22,7 @@ parser.add_option('--model', dest='model',type=str,default='f3c_yyqcd_nlo',help=
 (opt, args) = parser.parse_args()
 
 
-out_store_dir=opt.out_store_dir#"/eos/home-o/oiorio/DMMC/XSecs"
+out_store_dir=opt.out_store_dir
 work_dir=opt.work_dir
 doresub=opt.resubmit_failed
 doforce=opt.force
@@ -62,20 +62,12 @@ if opt.model=="f3s_xx_nlo":
 if opt.model=="f3s_xx_lo":
     models=models_f3s_xx_lo
     from success_mass_pairs_f3s_xx_lo import successful_pairs
-#from success_mass_pairs_f3s_xx import successful_pairs
+
 print("models are"), models
 
 
 
-YMasses=[1800]
-XMasses=[900,1100,1300]
-XMasses=[1100,900]
-XMasses=[1100,900]
-
-YMasses=[1300]
-XMasses=[500]
-YMasses=[3000]
-#XMasses=[2000]
+XMasses=[2000]
 XMasses=[2200]
 
 fullloop = True
@@ -91,9 +83,6 @@ Min = opt.minimum
 Max = opt.maximum
 if(fullloop):
     YMasses=[i*200 for i in range(Min,Max)]
-#    YMasses=[i*200 for i in range(10,14)]
-#    YMasses=[i*200 for i in range(13,16)]
-#    YMasses=[i*200 for i in range(2,16)]
     XMasses=[1,10,50,100]
     XMasses.extend([i*200 for i in range(1,16)])
 mTop=172
@@ -159,11 +148,9 @@ print(" mass list length ")
 
 
 
-#XMasses=[1300]
-nevents="1000"
+nevents="1000"#for testing
 if (fullloop):
     nevents="100000"
-#    nevents="1000"
 nToRun=0
 for m in models:
     string_cfg=""
@@ -206,7 +193,6 @@ for m in models:
             MY="MY"+str(mY)
             torun=(not doresub)
             fullname=m+"_"+MY+"_"+MX
-            #torun=True
             has_hepmc=True
 
 
@@ -219,7 +205,6 @@ for m in models:
                     print("emptying the folder before launching: ", rmdircmd)
                     if not opt.dryrun:
                         print()
-                        #os.system(rmdircmd)
                     has_hepmc=False
                     mode="GM"
                 if( (mY,mX) in FailMadanPairs and not ( ( (mY,mX) in SuccessMassPairs ) or ( (mY,mX) in successful_pairs) ) ):
@@ -332,13 +317,10 @@ for m in models:
                 
             local_out_dir=models[m][2]["out"].replace("output","").replace(" ","")
             print("file is ")
-            #print("local_out_dir ",type(local_out_dir))
             local_out_dir=local_out_dir.replace("MX900",MX).replace("MY1300",MY)
             out_store_dir_local=out_store_dir+"/eos/home-o/oiorio/DMMC/XSecs/"+local_out_dir
             if(opt.clear):
                 mode = "C"
-##                if opt.forceclear
-#                mode = "CC"
                 if(toclear):
                     print(" clearing mass point mY ",mY, " mX ",mX)
             command_sub =" python submit_condor.py -m "+mode+" -r "+ runmg_name +" -g " +runmg_generate_name + " -R " + runmg_recast_name + " -S "+ runmg_sfs_name + " -O "+ local_out_dir + " -o " + out_store_dir + " -l " +m+"_"+MY+"_"+MX+" & "
@@ -362,12 +344,8 @@ shutil.copy("success_mass_pairs.py","success_mass_pairs_backup.py")
 fos = open("success_mass_pairs.py","w")
 fos.write("successful_pairs ={} \n")
 
-#fos.write('successful_pairs["F3C_XX_NLO_SMt"]=[]\n') 
-#fos.write('successful_pairs["F3C_XX_LO_SMt"]=[]\n')
-#fos.write('successful_pairs["F3C_YYQCD_NLO_SMt"]=[]\n')
 
-
-for m in models:
+for m in models: #note: this version does not support yet the multiple model running, still to launch 1 by 1:
     fos.write('successful_pairs[\"'+m+'\"]=')
     print( " pre succ pair ", successful_pairs[m], " \\ len ", len(successful_pairs[m]))
     for S in SuccessMassPairs:
@@ -383,7 +361,6 @@ for m in models:
     fos.close()
     if(opt.model == "f3c_yyqcd_nlo"):
         print("cptime")
-        #s.system("cp successfu_pairs.py success_mass_pairs_f3c_yyqcd_nlo.py")
         shutil.copy("success_mass_pairs.py","success_mass_pairs_f3c_yyqcd_nlo.py")
     if(opt.model == "f3c_xx_nlo"):
         shutil.copy("success_mass_pairs.py","success_mass_pairs_f3c_xx_nlo.py")

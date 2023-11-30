@@ -1,0 +1,10 @@
+#############################################
+##### MA5 instructions for DMtsimp 2022 #####
+#############################################
+                                             
+                                             
+define invisible = invisible 51 52 53 56 -56 57 -57 58 -58
+import /ssdfs/users/lp1c12/DMtsimp/MG5Runs/F3S_YYQCD_NLO_SMt_MY1300_MX900/Events/F3S_YYQCD_NLO_SMt_MY1300_MX900_decayed_1/events_PYTHIA8_0.hepmc.gz as F3S_YYQCD_NLO_SMt_MY1300_MX900 
+set F3C_YYQCD_NLO_SMt_MY1300_MX900.xsection = SED_CROSSSECTION
+set main.outputfile=ma5_events.lhe
+submit

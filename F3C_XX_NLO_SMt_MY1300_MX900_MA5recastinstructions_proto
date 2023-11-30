@@ -1,0 +1,13 @@
+
+#######################################################
+##### MA5 instructions for recast of DMtsimp 2022 #####
+#######################################################
+                                                       
+set main.recast = on
+set main.recast.store_events = False
+define invisible = invisible 51 52 53 56 -56 57 -57 58 -58
+import PYTHIAFILE as F3C_XX_NLO_SMt_MY1300_MX900
+set F3C_XX_NLO_SMt_MY1300_MX900.xsection = 1
+set main.recast.card_path = /afs/cern.ch/work/o/oiorio/DMMC/MG5_aMC_v2_9_15/RecastingCards/recasting_card_2023.dat
+submit
+
