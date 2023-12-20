@@ -4,8 +4,12 @@ import shutil
 
 usage = 'python sub_mass_condor.py -o out_work_dir -w work_dir -n dryrun -r True' 
 parser = optparse.OptionParser(usage)
-parser.add_option('-o','--output', dest='out_store_dir',type=str,default='/eos/home-o/oiorio/DMMC/XSecs',help='file storage directory')
-parser.add_option('-w','--work', dest='work_dir',type=str,default='/eos/home-o/oiorio/DMMC/Events',help='work directory')
+#parser.add_option('-o','--output', dest='out_store_dir',type=str,default='/eos/home-o/oiorio/DMMC/XSecs',help='file storage directory')
+#parser.add_option('-w','--work', dest='work_dir',type=str,default='/eos/home-o/oiorio/DMMC/Events',help='work directory')
+
+parser.add_option('-o','--output', dest='out_store_dir',type=str,default='/eos/home-o/oiorio/DMMC/Events',help='file storage directory')
+parser.add_option('-w','--work', dest='work_dir',type=str,default='/tmp/mjf-oiorio/',help='work directory')
+
 parser.add_option('-r','--resubmit_failed', dest='resubmit_failed', type=int, default = 1, help="resubmit failed files in the out_store_dir or work_dir. Suggested option as it will also submit new jobs")
 parser.add_option('-n','--dryrun', dest='dryrun', default = False, action='store_true', help="dryrun")
 parser.add_option('-g','--group', dest='grouprun', default = False, action='store_true', help="group several runs together")
@@ -22,7 +26,7 @@ parser.add_option('--model', dest='model',type=str,default='f3c_yyqcd_nlo',help=
 (opt, args) = parser.parse_args()
 
 
-out_store_dir=opt.out_store_dir
+out_store_dir=opt.out_store_dir#"/eos/home-o/oiorio/DMMC/XSecs"
 work_dir=opt.work_dir
 doresub=opt.resubmit_failed
 doforce=opt.force
@@ -62,12 +66,20 @@ if opt.model=="f3s_xx_nlo":
 if opt.model=="f3s_xx_lo":
     models=models_f3s_xx_lo
     from success_mass_pairs_f3s_xx_lo import successful_pairs
-
+#from success_mass_pairs_f3s_xx import successful_pairs
 print("models are"), models
 
 
 
-XMasses=[2000]
+YMasses=[1800]
+XMasses=[900,1100,1300]
+XMasses=[1100,900]
+XMasses=[1100,900]
+
+YMasses=[1300]
+XMasses=[500]
+YMasses=[3000]
+#XMasses=[2000]
 XMasses=[2200]
 
 fullloop = True
@@ -83,6 +95,9 @@ Min = opt.minimum
 Max = opt.maximum
 if(fullloop):
     YMasses=[i*200 for i in range(Min,Max)]
+#    YMasses=[i*200 for i in range(10,14)]
+#    YMasses=[i*200 for i in range(13,16)]
+#    YMasses=[i*200 for i in range(2,16)]
     XMasses=[1,10,50,100]
     XMasses.extend([i*200 for i in range(1,16)])
 mTop=172
@@ -100,8 +115,8 @@ if (doresub):
                 MX="MX"+str(mX)
                 MY="MY"+str(mY)
                 fullname=m+"_"+MY+"_"+MX
-                dir_point=work_dir+"/condor/work/"+fullname
-                dirhappened = os.path.exists(dir_point)
+                dir_point=out_store_dir+"/condor/work/"+fullname
+                dirhappened = os.path.exists(dir_point+"_ANALYSIS_0")
                 point_failed=True
                 hepmc_failed=True
                 analhappened=False
@@ -113,8 +128,12 @@ if (doresub):
                 print("MY= ", MY, " MX= ",MX," dir evts pythia at mass ",dir_evts_pythia_point)
                 if(dirhappened):
                     print(" point ",fullname, " happened at ",dir_point)
-                    anal_evts=dir_point+"/madanalysis5/ANALYSIS_0/Output/SAF/CLs_output_summary.dat"
-                    dir_evts=dir_point+"/DMtsimp/MG5Runs/"+fullname+"/Events/run_01/summary.txt"
+                    anal_evts=dir_point+"_ANALYSIS_0/Output/SAF/CLs_output_summary.dat"
+                    dir_evts=dir_point+"/summary.txt"
+                    
+                    #anal_evts=dir_point+"/madanalysis5/ANALYSIS_0/Output/SAF/CLs_output_summary.dat"
+                    #dir_evts=dir_point+"/DMtsimp/MG5Runs/"+fullname+"/Events/run_01/summary.txt"
+
                     evtshappened=os.path.exists(dir_evts)
                     analhappened=os.path.exists(anal_evts)
                     print(" analysis dir: " ,anal_evts,"analysis happened?",analhappened)    
@@ -123,13 +142,12 @@ if (doresub):
                         hepmc_failed=False
                     print(" events dir: " ,dir_evts_pythia,"events happened?",evtshappened)    
 
-                    dir_evts_madanal=dir_point+"/ANALYSIS_0"
+                    dir_evts_madanal=dir_point+"/ANALYSIS_1"
                     evtshappened= os.path.exists(dir_evts_madanal)
                     if(analhappened):
                         print(" point ",fullname, " ran events at ",dir_evts)
                         os.system("tail -20 "+dir_evts)
                         point_failed=False
-
                 if(not analhappened):
                     if(hepmc_failed):
                         FailMassPairs.append((mY,mX))
@@ -148,9 +166,11 @@ print(" mass list length ")
 
 
 
-nevents="1000"#for testing
+#XMasses=[1300]
+nevents="1000"
 if (fullloop):
     nevents="100000"
+#    nevents="1000"
 nToRun=0
 for m in models:
     string_cfg=""
@@ -193,6 +213,7 @@ for m in models:
             MY="MY"+str(mY)
             torun=(not doresub)
             fullname=m+"_"+MY+"_"+MX
+            #torun=True
             has_hepmc=True
 
 
@@ -201,18 +222,19 @@ for m in models:
                 if((mY,mX) in FailMassPairs and not ( ( (mY,mX) in SuccessMassPairs ) or ( (mY,mX) in successful_pairs) ) ):
                     torun=True
                     print("running failed mass - hepmc step ",MY,MX)
-                    rmdircmd= "rm "+ work_dir+"/condor/work/"+fullname+" -rf "
+                    rmdircmd= "rm "+ out_store_dir+"/condor/work/"+fullname+" -rf "
                     print("emptying the folder before launching: ", rmdircmd)
                     if not opt.dryrun:
                         print()
+                        #os.system(rmdircmd)
                     has_hepmc=False
                     mode="GM"
                 if( (mY,mX) in FailMadanPairs and not ( ( (mY,mX) in SuccessMassPairs ) or ( (mY,mX) in successful_pairs) ) ):
                     torun=True
                     print("running failed mass -madan step ",MY,MX)
-                    rmdircmd= "rm "+ work_dir+"/condor/work/"+fullname+"/madanalysis5 -rf "
-                    rmdircmdt= "rm "+ work_dir+"/condor/work/"+fullname+"/tools -rf "
-                    rmdircmdf= "rm "+ work_dir+"/condor/work/"+fullname+"/*protofix -rf "
+                    rmdircmd= "rm "+ out_store_dir+"/condor/work/"+fullname+"/madanalysis5 -rf "
+                    rmdircmdt= "rm "+ out_store_dir+"/condor/work/"+fullname+"/tools -rf "
+                    rmdircmdf= "rm "+ out_store_dir+"/condor/work/"+fullname+"/*protofix -rf "
                     print("emptying the folder before launching: ", rmdircmd)
 
                     if not opt.dryrun:
@@ -226,7 +248,8 @@ for m in models:
                     print(" successful pair ",mY,mX," imported from repo")
                 torun=False
                 toclear=True
-                
+            if opt.forceclear:
+                torun=True
             runmg_name=(models[m][0].replace("MY1300",MY).replace("MX900",MX))
             runmg_generate_name=(models[m][1]).replace("MY1300",MY).replace("MX900",MX)
             runmg_recast_name=(models[m][3]).replace("MY1300",MY).replace("MX900",MX)
@@ -282,6 +305,7 @@ for m in models:
             
                 impsentence=models[m][4]["imp"] 
                 dir_point=work_dir+"/condor/work/"+fullname+"/"
+                #out_dir_point=out_store_dir+"/condor/work/"+fullname+"/"
                 if("YY" in m):
                     dir_evts_pythia=dir_point+"/DMtsimp/MG5Runs/"+fullname+"/Events/run_01_decayed_1/events_PYTHIA8_0.hepmc.gz"
                 if("XX" in m):
@@ -317,17 +341,23 @@ for m in models:
                 
             local_out_dir=models[m][2]["out"].replace("output","").replace(" ","")
             print("file is ")
+            #print("local_out_dir ",type(local_out_dir))
             local_out_dir=local_out_dir.replace("MX900",MX).replace("MY1300",MY)
-            out_store_dir_local=out_store_dir+"/eos/home-o/oiorio/DMMC/XSecs/"+local_out_dir
-            if(opt.clear):
+            #out_store_dir_local=out_store_dir+"/eos/home-o/oiorio/DMMC/XSecs/"+local_out_dir
+            #            out_store_dir_local=out_store_dir+"/eos/home-o/oiorio/DMMC/XSecs/"+local_out_dir
+            if(opt.clear or opt.forceclear ):
                 mode = "C"
+##                if opt.forceclear
+#                mode = "CC"
                 if(toclear):
                     print(" clearing mass point mY ",mY, " mX ",mX)
             command_sub =" python submit_condor.py -m "+mode+" -r "+ runmg_name +" -g " +runmg_generate_name + " -R " + runmg_recast_name + " -S "+ runmg_sfs_name + " -O "+ local_out_dir + " -o " + out_store_dir + " -l " +m+"_"+MY+"_"+MX+" & "
             print ("command submit is: ",command_sub)
             if( (torun or doforce ) and not opt.dryrun):
                 print()
-                if( torun or toclear or doforce ):os.system(command_sub)
+                if( torun or toclear or doforce ):
+                    print(" running! ",MY,MX )
+                    os.system(command_sub)
 
 print(" points list length ",nToRun)
 print(" failed mg5 pairs ",FailMassPairs)
@@ -344,8 +374,12 @@ shutil.copy("success_mass_pairs.py","success_mass_pairs_backup.py")
 fos = open("success_mass_pairs.py","w")
 fos.write("successful_pairs ={} \n")
 
+#fos.write('successful_pairs["F3C_XX_NLO_SMt"]=[]\n') 
+#fos.write('successful_pairs["F3C_XX_LO_SMt"]=[]\n')
+#fos.write('successful_pairs["F3C_YYQCD_NLO_SMt"]=[]\n')
 
-for m in models: #note: this version does not support yet the multiple model running, still to launch 1 by 1:
+
+for m in models:
     fos.write('successful_pairs[\"'+m+'\"]=')
     print( " pre succ pair ", successful_pairs[m], " \\ len ", len(successful_pairs[m]))
     for S in SuccessMassPairs:
@@ -361,6 +395,7 @@ for m in models: #note: this version does not support yet the multiple model run
     fos.close()
     if(opt.model == "f3c_yyqcd_nlo"):
         print("cptime")
+        #s.system("cp successfu_pairs.py success_mass_pairs_f3c_yyqcd_nlo.py")
         shutil.copy("success_mass_pairs.py","success_mass_pairs_f3c_yyqcd_nlo.py")
     if(opt.model == "f3c_xx_nlo"):
         shutil.copy("success_mass_pairs.py","success_mass_pairs_f3c_xx_nlo.py")
