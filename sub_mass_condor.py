@@ -15,6 +15,7 @@ parser.add_option('-n','--dryrun', dest='dryrun', default = False, action='store
 parser.add_option('-g','--group', dest='grouprun', default = False, action='store_true', help="group several runs together")
 parser.add_option('-c','--clear', dest='clear', default = False, action='store_true', help="clear the directories from heavy files")
 parser.add_option('--forceclear', dest='forceclear', default = False, action='store_true', help="clear the directory from heavy files regardless of the success state")
+parser.add_option('--nosubmit', dest='nosubmit', default = False, action='store_true', help="create the cfg files but do not sobmit the jobs")
 parser.add_option('-m','--minimum', dest='minimum',type=int,default=2,help="minimum mass point (*200), default =2 (=400),")
 parser.add_option('-M','--maximum', dest='maximum',type=int,default=2,help="maximum mass point (*200), default =10-1 (=1800),")
 parser.add_option('-f','--force', dest='force', default = False, action='store_true', help="force running on condor even if the directory is there")
@@ -33,7 +34,7 @@ doforce=opt.force
 
 models_f3c_yyqcd_nlo={"F3C_YYQCD_NLO_SMt":("F3C_YYQCD_NLO_SMt_MY1300_MX900_topologyinstructions","F3C_YYQCD_NLO_SMt_MY1300_MX900_runinstructions",
                              {"out":"output DMtsimp/MG5Runs/F3C_YYQCD_NLO_SMt_MY1300_MX900","mx":"MXc","my":"MYF3u3"},
-                             "F3C_YYQCD_NLO_SMt_MY1300_MX900_MA5recastinstructions_proto",{"imp":"import /afs/cern.ch/work/o/oiorio/DMMC/MG5_aMC_v2_9_15/","imp2":"import /ssdfs/users/lp1c12/DMtsimp/MG5Runs/F3S_YYQCD_NLO_SMt_MY1300_MX900/Events/F3S_YYQCD_NLO_SMt_MY1300_MX900_decayed_1/events_PYTHIA8_0.hepmc.gz as F3S_YYQCD_NLO_SMt_MY1300_MX900","imp3":"set main.recast.card_path = /afs/cern.ch/work/o/oiorio/DMMC/MG5_aMC_v2_9_15/RecastingCards/recasting_card_2023.dat","xs2":"set F3S_YYQCD_NLO_SMt_MY1300_MX900.xsection = SED_CROSSSECTION" },"F3C_YYQCD_NLO_SMt_MY1300_MX900_sfsinstructions_proto")}
+                             "F3C_YYQCD_NLO_SMt_MY1300_MX900_MA5recastinstructions_proto",{"imp":"import /afs/cern.ch/work/o/oiorio/DMMC/MG5_aMC_v2_9_15/","imp2":"import PYTHIAFILE as F3C_YYQCD_NLO_SMt_MY1300_MX900","imp3":"set main.recast.card_path = /afs/cern.ch/work/o/oiorio/DMMC/MG5_aMC_v2_9_15/RecastingCards/recasting_card_2023.dat","xs2":"set F3S_YYQCD_NLO_SMt_MY1300_MX900.xsection = SED_CROSSSECTION" },"F3C_YYQCD_NLO_SMt_MY1300_MX900_sfsinstructions_proto")}
 
 models_f3c_xx_nlo={"F3C_XX_NLO_SMt":("F3C_XX_NLO_SMt_MY1300_MX900_topologyinstructions","F3C_XX_NLO_SMt_MY1300_MX900_runinstructions",
                              {"out":"output DMtsimp/MG5Runs/F3C_XX_NLO_SMt_MY1300_MX900","mx":"MXc","my":"MYF3u3"},
@@ -41,11 +42,57 @@ models_f3c_xx_nlo={"F3C_XX_NLO_SMt":("F3C_XX_NLO_SMt_MY1300_MX900_topologyinstru
 
 models_f3s_xx_nlo={"F3S_XX_NLO_SMt":("F3S_XX_NLO_SMt_MY1300_MX900_topologyinstructions","F3S_XX_NLO_SMt_MY1300_MX900_runinstructions",
                              {"out":"output DMtsimp/MG5Runs/F3S_XX_NLO_SMt_MY1300_MX900","mx":"MXs","my":"MYF3u3"},
-                             "F3S_XX_NLO_SMt_MY1300_MX900_MA5recastinstructions_proto",{"imp":"import /afs/cern.ch/work/o/oiorio/DMMC/MG5_aMC_v2_9_15/","imp2":"import /ssdfs/users/lp1c12/DMtsimp/MG5Runs/F3S_XX_NLO_SMt_MY1300_MX900/Events/F3S_XX_NLO_SMt_MY1300_MX900_decayed_1/events_PYTHIA8_0.hepmc.gz as F3S_XX_NLO_SMt_MY1300_MX900","imp3":"set main.recast.card_path = /scratch/lp1c12/DMtsimp_project/DMspin/DMtsimp/core/Cards/recasting_card_2023.dat","xs2":"set F3S_XX_NLO_SMt_MY1300_MX900.xsection = SED_CROSSSECTION" },"F3S_XX_NLO_SMt_MY1300_MX900_sfsinstructions_proto")}
+                             "F3S_XX_NLO_SMt_MY1300_MX900_MA5recastinstructions_proto",{"imp":"import /afs/cern.ch/work/o/oiorio/DMMC/MG5_aMC_v2_9_15/","imp2":"import PYTHIAFILE as F3S_XX_NLO_SMt_MY1300_MX900","imp3":"set main.recast.card_path = /scratch/lp1c12/DMtsimp_project/DMspin/DMtsimp/core/Cards/recasting_card_2023.dat","xs2":"set F3S_XX_NLO_SMt_MY1300_MX900.xsection = SED_CROSSSECTION" },"F3S_XX_NLO_SMt_MY1300_MX900_sfsinstructions_proto")}
 
 models_f3s_xx_lo={"F3S_XX_LO_SMt":("F3S_XX_LO_SMt_MY1300_MX900_topologyinstructions","F3S_XX_LO_SMt_MY1300_MX900_runinstructions",
                              {"out":"output DMtsimp/MG5Runs/F3S_XX_LO_SMt_MY1300_MX900","mx":"MXs","my":"MYF3u3"},
-                             "F3S_XX_LO_SMt_MY1300_MX900_MA5recastinstructions_proto",{"imp":"import /afs/cern.ch/work/o/oiorio/DMMC/MG5_aMC_v2_9_15/","imp2":"import /ssdfs/users/lp1c12/DMtsimp/MG5Runs/F3S_XX_LO_SMt_MY1300_MX900/Events/F3S_XX_LO_SMt_MY1300_MX900_decayed_1/events_PYTHIA8_0.hepmc.gz as F3S_XX_LO_SMt_MY1300_MX900","imp3":"set main.recast.card_path = /scratch/lp1c12/DMtsimp_project/DMspin/DMtsimp/core/Cards/recasting_card_2023.dat","xs2":"set F3S_XX_LO_SMt_MY1300_MX900.xsection = SED_CROSSSECTION" },"F3S_XX_LO_SMt_MY1300_MX900_sfsinstructions_proto")}
+                             "F3S_XX_LO_SMt_MY1300_MX900_MA5recastinstructions_proto",{"imp":"import /afs/cern.ch/work/o/oiorio/DMMC/MG5_aMC_v2_9_15/","imp2":"import PYTHIAFILE as F3S_XX_LO_SMt_MY1300_MX900","imp3":"set main.recast.card_path = /scratch/lp1c12/DMtsimp_project/DMspin/DMtsimp/core/Cards/recasting_card_2023.dat","xs2":"set F3S_XX_LO_SMt_MY1300_MX900.xsection = SED_CROSSSECTION" },"F3S_XX_LO_SMt_MY1300_MX900_sfsinstructions_proto")}
+
+#f3v
+models_f3v_yyqcd_nlo={"F3V_YYQCD_NLO_SMt":("F3V_YYQCD_NLO_SMt_MY1300_MX900_topologyinstructions","F3V_YYQCD_NLO_SMt_MY1300_MX900_runinstructions",
+                             {"out":"output DMtsimp/MG5Runs/F3V_YYQCD_NLO_SMt_MY1300_MX900","mx":"MXv","my":"MYF3u3"},
+                             "F3V_YYQCD_NLO_SMt_MY1300_MX900_MA5recastinstructions_proto",{"imp":"import /afs/cern.ch/work/o/oiorio/DMMC/MG5_aMC_v2_9_15/","imp2":"import PYTHIAFILE as F3V_YYQCD_NLO_SMt_MY1300_MX900","imp3":"set main.recast.card_path = /afs/cern.ch/work/o/oiorio/DMMC/MG5_aMC_v2_9_15/RecastingCards/recasting_card_2023.dat","xs2":"set F3V_YYQCD_NLO_SMt_MY1300_MX900.xsection = SED_CROSSSECTION" },"F3V_YYQCD_NLO_SMt_MY1300_MX900_sfsinstructions_proto")}
+
+models_f3v_xx_nlo={"F3V_XX_NLO_SMt":("F3V_XX_NLO_SMt_MY1300_MX900_topologyinstructions","F3V_XX_NLO_SMt_MY1300_MX900_runinstructions",
+                             {"out":"output DMtsimp/MG5Runs/F3V_XX_NLO_SMt_MY1300_MX900","mx":"MXv","my":"MYF3u3"},
+                             "F3V_XX_NLO_SMt_MY1300_MX900_MA5recastinstructions_proto",{"imp":"import /afs/cern.ch/work/o/oiorio/DMMC/MG5_aMC_v2_9_15/","imp2":"import PYTHIAFILE as F3V_XX_NLO_SMt_MY1300_MX900","imp3":"set main.recast.card_path = /scratch/lp1c12/DMtsimp_project/DMspin/DMtsimp/core/Cards/recasting_card_2023.dat","xs2":"set F3V_XX_NLO_SMt_MY1300_MX900.xsection = SED_CROSSSECTION" },"F3V_XX_NLO_SMt_MY1300_MX900_sfsinstructions_proto")}
+
+
+#f3w
+models_f3w_yyqcd_nlo={"F3W_YYQCD_NLO_SMt":("F3W_YYQCD_NLO_SMt_MY1300_MX900_topologyinstructions","F3W_YYQCD_NLO_SMt_MY1300_MX900_runinstructions",
+                             {"out":"output DMtsimp/MG5Runs/F3W_YYQCD_NLO_SMt_MY1300_MX900","mx":"MXw","my":"MYF3u3"},
+                             "F3W_YYQCD_NLO_SMt_MY1300_MX900_MA5recastinstructions_proto",{"imp":"import /afs/cern.ch/work/o/oiorio/DMMC/MG5_aMC_v2_9_15/","imp2":"import PYTHIAFILE as F3W_YYQCD_NLO_SMt_MY1300_MX900","imp3":"set main.recast.card_path = /afs/cern.ch/work/o/oiorio/DMMC/MG5_aMC_v2_9_15/RecastingCards/recasting_card_2023.dat","xs2":"set F3W_YYQCD_NLO_SMt_MY1300_MX900.xsection = SED_CROSSSECTION" },"F3W_YYQCD_NLO_SMt_MY1300_MX900_sfsinstructions_proto")}
+
+models_f3w_xx_nlo={"F3W_XX_NLO_SMt":("F3W_XX_NLO_SMt_MY1300_MX900_topologyinstructions","F3W_XX_NLO_SMt_MY1300_MX900_runinstructions",
+                             {"out":"output DMtsimp/MG5Runs/F3W_XX_NLO_SMt_MY1300_MX900","mx":"MXw","my":"MYF3u3"},
+                             "F3W_XX_NLO_SMt_MY1300_MX900_MA5recastinstructions_proto",{"imp":"import /afs/cern.ch/work/o/oiorio/DMMC/MG5_aMC_v2_9_15/","imp2":"import PYTHIAFILE as F3W_XX_NLO_SMt_MY1300_MX900","imp3":"set main.recast.card_path = /scratch/lp1c12/DMtsimp_project/DMspin/DMtsimp/core/Cards/recasting_card_2023.dat","xs2":"set F3W_XX_NLO_SMt_MY1300_MX900.xsection = SED_CROSSSECTION" },"F3W_XX_NLO_SMt_MY1300_MX900_sfsinstructions_proto")}
+
+
+
+
+#s3d
+models_s3d_yyqcd_nlo={"S3D_YYQCD_NLO_SMt":("S3D_YYQCD_NLO_SMt_MY1300_MX900_topologyinstructions","S3D_YYQCD_NLO_SMt_MY1300_MX900_runinstructions",
+                             {"out":"output DMtsimp/MG5Runs/S3D_YYQCD_NLO_SMt_MY1300_MX900","mx":"MXd","my":"MYS3u3"},
+                             "S3D_YYQCD_NLO_SMt_MY1300_MX900_MA5recastinstructions_proto",{"imp":"import /afs/cern.ch/work/o/oiorio/DMMC/MG5_aMC_v2_9_15/","imp2":"import PYTHIAFILE as S3D_YYQCD_NLO_SMt_MY1300_MX900","imp3":"set main.recast.card_path = /afs/cern.ch/work/o/oiorio/DMMC/MG5_aMC_v2_9_15/RecastingCards/recasting_card_2023.dat","xs2":"set S3D_YYQCD_NLO_SMt_MY1300_MX900.xsection = SED_CROSSSECTION" },"S3D_YYQCD_NLO_SMt_MY1300_MX900_sfsinstructions_proto")}
+
+models_s3d_xx_nlo={"S3D_XX_NLO_SMt":("S3D_XX_NLO_SMt_MY1300_MX900_topologyinstructions","S3D_XX_NLO_SMt_MY1300_MX900_runinstructions",
+                             {"out":"output DMtsimp/MG5Runs/S3D_XX_NLO_SMt_MY1300_MX900","mx":"MXd","my":"MYS3u3"},
+                             "S3D_XX_NLO_SMt_MY1300_MX900_MA5recastinstructions_proto",{"imp":"import /afs/cern.ch/work/o/oiorio/DMMC/MG5_aMC_v2_9_15/","imp2":"import PYTHIAFILE as S3D_XX_NLO_SMt_MY1300_MX900","imp3":"set main.recast.card_path = /scratch/lp1c12/DMtsimp_project/DMspin/DMtsimp/core/Cards/recasting_card_2023.dat","xs2":"set S3D_XX_NLO_SMt_MY1300_MX900.xsection = SED_CROSSSECTION" },"S3D_XX_NLO_SMt_MY1300_MX900_sfsinstructions_proto")}
+
+
+
+#s3m
+models_s3m_yyqcd_nlo={"S3M_YYQCD_NLO_SMt":("S3M_YYQCD_NLO_SMt_MY1300_MX900_topologyinstructions","S3M_YYQCD_NLO_SMt_MY1300_MX900_runinstructions",
+                             {"out":"output DMtsimp/MG5Runs/S3M_YYQCD_NLO_SMt_MY1300_MX900","mx":"MXw","my":"MYF3u3"},
+                             "S3M_YYQCD_NLO_SMt_MY1300_MX900_MA5recastinstructions_proto",{"imp":"import /afs/cern.ch/work/o/oiorio/DMMC/MG5_aMC_v2_9_15/","imp2":"import PYTHIAFILE as S3M_YYQCD_NLO_SMt_MY1300_MX900","imp3":"set main.recast.card_path = /afs/cern.ch/work/o/oiorio/DMMC/MG5_aMC_v2_9_15/RecastingCards/recasting_card_2023.dat","xs2":"set F3S_YYQCD_NLO_SMt_MY1300_MX900.xsection = SED_CROSSSECTION" },"S3M_YYQCD_NLO_SMt_MY1300_MX900_sfsinstructions_proto")}
+
+models_s3m_xx_nlo={"S3M_XX_NLO_SMt":("S3M_XX_NLO_SMt_MY1300_MX900_topologyinstructions","S3M_XX_NLO_SMt_MY1300_MX900_runinstructions",
+                             {"out":"output DMtsimp/MG5Runs/S3M_XX_NLO_SMt_MY1300_MX900","mx":"MXw","my":"MYF3u3"},
+                             "S3M_XX_NLO_SMt_MY1300_MX900_MA5recastinstructions_proto",{"imp":"import /afs/cern.ch/work/o/oiorio/DMMC/MG5_aMC_v2_9_15/","imp2":"import PYTHIAFILE as S3M_XX_NLO_SMt_MY1300_MX900","imp3":"set main.recast.card_path = /scratch/lp1c12/DMtsimp_project/DMspin/DMtsimp/core/Cards/recasting_card_2023.dat","xs2":"set S3M_XX_NLO_SMt_MY1300_MX900.xsection = SED_CROSSSECTION" },"S3M_XX_NLO_SMt_MY1300_MX900_sfsinstructions_proto")}
+
+
+
+
 
 models={}
 if opt.model=="f3c_yyqcd_nlo":
@@ -66,6 +113,65 @@ if opt.model=="f3s_xx_nlo":
 if opt.model=="f3s_xx_lo":
     models=models_f3s_xx_lo
     from success_mass_pairs_f3s_xx_lo import successful_pairs
+
+#f3v
+if opt.model=="f3v_xx_nlo":
+    models=models_f3v_xx_nlo
+    if(os.path.exists("success_mass_pairs_f3v_xx_nlo.py") ): 
+       from success_mass_pairs_f3v_xx_nlo import successful_pairs
+    else:
+       successful_pairs={"F3V_XX_NLO_SMt":[]}
+if opt.model=="f3v_yyqcd_nlo":
+    models=models_f3v_yyqcd_nlo
+    if(os.path.exists("success_mass_pairs_f3v_yyqcd_nlo.py") ): 
+       from success_mass_pairs_f3v_yyqcd_nlo import successful_pairs
+    else:
+       successful_pairs={"F3V_YYQCD_NLO_SMt":[]}
+#f3w
+if opt.model=="f3w_xx_nlo":
+    models=models_f3w_xx_nlo
+    if(os.path.exists("success_mass_pairs_f3w_xx_nlo.py") ): 
+       from success_mass_pairs_f3w_xx_nlo import successful_pairs
+    else:
+       successful_pairs={"F3W_XX_NLO_SMt":[]}
+if opt.model=="f3w_yyqcd_nlo":
+    models=models_f3w_yyqcd_nlo
+    if(os.path.exists("success_mass_pairs_f3w_yyqcd_nlo.py") ): 
+       from success_mass_pairs_f3w_yyqcd_nlo import successful_pairs
+    else:
+       successful_pairs={"F3W_YYQCD_NLO_SMt":[]}
+
+
+#s3d
+if opt.model=="s3d_xx_nlo":
+    models=models_s3d_xx_nlo
+    if(os.path.exists("success_mass_pairs_s3d_xx_nlo.py") ): 
+       from success_mass_pairs_s3d_xx_nlo import successful_pairs
+    else:
+       successful_pairs={"S3D_XX_NLO_SMt":[]}
+if opt.model=="s3d_yyqcd_nlo":
+    models=models_s3d_yyqcd_nlo
+    if(os.path.exists("success_mass_pairs_s3d_yyqcd_nlo.py") ): 
+       from success_mass_pairs_s3d_yyqcd_nlo import successful_pairs
+    else:
+       successful_pairs={"S3D_YYQCD_NLO_SMt":[]}
+
+
+#s3m
+if opt.model=="s3m_xx_nlo":
+    models=models_s3m_xx_nlo
+    if(os.path.exists("success_mass_pairs_s3m_xx_nlo.py") ): 
+       from success_mass_pairs_s3m_xx_nlo import successful_pairs
+    else:
+       successful_pairs={"S3M_XX_NLO_SMt":[]}
+if opt.model=="s3m_yyqcd_nlo":
+    models=models_s3m_yyqcd_nlo
+    if(os.path.exists("success_mass_pairs_s3m_yyqcd_nlo.py") ): 
+       from success_mass_pairs_s3m_yyqcd_nlo import successful_pairs
+    else:
+       successful_pairs={"S3M_YYQCD_NLO_SMt":[]}
+
+
 #from success_mass_pairs_f3s_xx import successful_pairs
 print("models are"), models
 
@@ -357,8 +463,8 @@ for m in models:
                 print()
                 if( torun or toclear or doforce ):
                     print(" running! ",MY,MX )
-                    os.system(command_sub)
-
+                    if (not opt.nosubmit): os.system(command_sub)
+                    
 print(" points list length ",nToRun)
 print(" failed mg5 pairs ",FailMassPairs)
 FailMadanOnlyPairs=[]
@@ -400,8 +506,31 @@ for m in models:
     if(opt.model == "f3c_xx_nlo"):
         shutil.copy("success_mass_pairs.py","success_mass_pairs_f3c_xx_nlo.py")
 
+        #f3v
+    if(opt.model == "f3v_yyqcd_nlo"):
+        shutil.copy("success_mass_pairs.py","success_mass_pairs_f3v_yyqcd_nlo.py")
+    if(opt.model == "f3v_xx_nlo"):
+        shutil.copy("success_mass_pairs.py","success_mass_pairs_f3v_xx_nlo.py")
+        #f3w
+    if(opt.model == "f3w_yyqcd_nlo"):
+        shutil.copy("success_mass_pairs.py","success_mass_pairs_f3w_yyqcd_nlo.py")
+    if(opt.model == "f3w_xx_nlo"):
+        shutil.copy("success_mass_pairs.py","success_mass_pairs_f3w_xx_nlo.py")
+        #f3s
     if(opt.model == "f3s_xx_nlo"):
         shutil.copy("success_mass_pairs.py","success_mass_pairs_f3s_xx_nlo.py")
     if(opt.model == "f3s_xx_lo"):
         shutil.copy("success_mass_pairs.py","success_mass_pairs_f3s_xx_lo.py")
+
+        #s3d
+    if(opt.model == "s3d_yyqcd_nlo"):
+        shutil.copy("success_mass_pairs.py","success_mass_pairs_s3d_yyqcd_nlo.py")
+    if(opt.model == "s3d_xx_nlo"):
+        shutil.copy("success_mass_pairs.py","success_mass_pairs_s3d_xx_nlo.py")
+
+        #s3m
+    if(opt.model == "s3m_yyqcd_nlo"):
+        shutil.copy("success_mass_pairs.py","success_mass_pairs_s3m_yyqcd_nlo.py")
+    if(opt.model == "s3m_xx_nlo"):
+        shutil.copy("success_mass_pairs.py","success_mass_pairs_s3m_xx_nlo.py")
     

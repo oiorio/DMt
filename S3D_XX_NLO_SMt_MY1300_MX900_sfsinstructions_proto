@@ -4,7 +4,7 @@
                                              
                                              
 define invisible = invisible 51 52 53 56 -56 57 -57 58 -58
-import PYTHIAFILE as F3C_YYQCD_NLO_SMt_MY1300_MX900 
-set F3C_YYQCD_NLO_SMt_MY1300_MX900.xsection = SED_CROSSSECTION
+import PYTHIAFILE as S3D_XX_NLO_SMt_MY1300_MX900
+set S3D_XX_NLO_SMt_MY1300_MX900.xsection = SED_CROSSSECTION
 set main.outputfile=ma5_events.lhe
 submit

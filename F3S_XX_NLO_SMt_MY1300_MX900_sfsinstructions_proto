@@ -4,7 +4,7 @@
                                              
                                              
 define invisible = invisible 51 52 53 56 -56 57 -57 58 -58
-import PYTHIAFILE as F3C_YYQCD_NLO_SMt_MY1300_MX900 
-set F3C_YYQCD_NLO_SMt_MY1300_MX900.xsection = SED_CROSSSECTION
+import /ssdfs/users/lp1c12/DMtsimp/MG5Runs/F3S_XX_NLO_SMt_MY1300_MX900/Events/F3S_XX_NLO_SMt_MY1300_MX900_decayed_1/events_PYTHIA8_0.hepmc.gz as F3S_XX_NLO_SMt_MY1300_MX900 
+set F3S_XX_NLO_SMt_MY1300_MX900.xsection = SED_CROSSSECTION
 set main.outputfile=ma5_events.lhe
 submit

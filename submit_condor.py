@@ -41,7 +41,9 @@ def sub_writer(label,work_dir="./",basedir="./",runner_dir="./"):
     f.write("transfer_input_files    = $(Proxy_path)\n")
     #f.write("transfer_output_remaps  = \""+outname+"_Skim.root=root://eosuser.cern.ch///eos/user/"+inituser + "/" + username+"/DarkMatter/topcandidate_file/"+dat_name+"_Skim.root\"\n")
     #f.write('requirements = (TARGET.OpSysAndVer =?= "CentOS7") && Request_Disk >= 25000000\n')
-    f.write('requirements = (TARGET.OpSysAndVer =?= "CentOS7") \n')
+    #f.write('requirements = (TARGET.OpSysAndVer =?= "CentOS7") \n')
+    f.write('MY.WantOS               = "el7" \n')
+    
     #    f.write('requirements = (TARGET.OpSysAndVer =?= "AlmaLinux9") \n')
     f.write("+JobFlavour             = \"testmatch\"\n") # options are espresso = 20 minutes, microcentury = 1 hour, longlunch = 2 hours, workday = 8 hours, tomorrow = 1 day, testmatch\ = 3 days, nextweek     = 1 week
     #f.write("+JobFlavour             = \"microcentury\"\n") # options are espresso = 20 minutes, microcentury = 1 hour, longlunch = 2 hours, workday = 8 hours, tomorrow = 1 day, testmatch\ = 3 days, nextweek     = 1 week
@@ -326,7 +328,7 @@ runner_writer(conf_file, gen_file,output_file,out_store_dir,runner_dir=runner_di
 print("runner.sh file, DONE!")
 sub_writer(label,work_dir=work_dir,basedir=basedir,runner_dir=runner_dir)
 #time.sleep(10)
-os.system("cd "+work_dir)
+#os.system("cd "+work_dir)
 print("condor.sub file, DONE!")
 if not dryrun: 
     if(mode =="C"):
@@ -336,5 +338,5 @@ if not dryrun:
         print()
         os.popen('condor_submit '+runner_dir+'/condor.sub')
     
-os.system("cd -")
+#os.system("cd -")
 print("DONE!")

@@ -1,0 +1,25 @@
+launch DMtsimp/MG5Runs/F3S_XX_NLO_SMd_MY1300_MX900
+madanalysis=OFF
+madspin=ON
+madspin=OFF
+shower=PYTHIA8
+done
+set req_acc=0.001
+set req_acc_fo=0.001
+set istr = 2
+set lamF3d1x1 = 0.1
+set lamF3u1x1 = 0
+set lamF3q1x1 = 0
+set MXs = 900
+set MYF3d1 = 1300
+set decay 5920001 Auto
+set iseed=20954
+set nevents=1000
+set pdlabel=lhapdf
+set lhaid=331700
+set ptj=50
+set reweight_pdf=True
+set use_syst=True
+set systematics_program=systematics
+set etaj=5
+done

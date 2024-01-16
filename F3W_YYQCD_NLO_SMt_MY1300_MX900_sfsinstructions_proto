@@ -1,10 +1,10 @@
-#############################################
+############################################
 ##### MA5 instructions for DMtsimp 2022 #####
 #############################################
                                              
                                              
 define invisible = invisible 51 52 53 56 -56 57 -57 58 -58
-import PYTHIAFILE as F3C_YYQCD_NLO_SMt_MY1300_MX900 
-set F3C_YYQCD_NLO_SMt_MY1300_MX900.xsection = SED_CROSSSECTION
+import PYTHIAFILE as F3W_YYQCD_NLO_SMt_MY1300_MX900 
+set F3W_YYQCD_NLO_SMt_MY1300_MX900.xsection = SED_CROSSSECTION
 set main.outputfile=ma5_events.lhe
 submit
