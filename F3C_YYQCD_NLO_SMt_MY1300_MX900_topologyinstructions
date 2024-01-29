@@ -1,6 +1,6 @@
 import model DMSimpt_NLO_v1_3_UFO-F3C_uni --modelname
 define qq = u c t d s b u~ c~ t~ d~ s~ b~
-define xx = xs
+define xx = xc xc~
 define yy = yf3u3 yf3u3~
 define uu = u u~
 define dd = d d~

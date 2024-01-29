@@ -6,7 +6,7 @@ shower=PYTHIA8
 done
 set req_acc=0.001
 set req_acc_fo=0.001
-set lamF3u3x3 = 0.1
+set lamF3u3x3 = 0.0001
 set lamF3d3x3 = 0
 set lamF3q3x3 = 0
 set MXw = 900

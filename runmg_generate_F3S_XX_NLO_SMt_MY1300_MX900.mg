@@ -1,4 +1,4 @@
-launch DMtsimp/MG5Runs/F3V_XX_NLO_SMt_MY1300_MX900 
+launch DMtsimp/MG5Runs/F3S_XX_NLO_SMt_MY1300_MX900 
 analysis=OFF
 madspin=ON
 madspin=OFF
@@ -6,14 +6,13 @@ shower=PYTHIA8
 done
 set req_acc=0.001
 set req_acc_fo=0.001
-set lamF3u3x3 = 0.0001
+set lamF3u3x3 = 0.1
 set lamF3d3x3 = 0
 set lamF3q3x3 = 0
-set MXv = 900
+set MXs = 900
 set MYF3u3 = 1300
 set decay 5920006 Auto
 set iseed=25421
-set istr=1 
 set nevents=1000
 set pdlabel=lhapdf
 set lhaid=331700

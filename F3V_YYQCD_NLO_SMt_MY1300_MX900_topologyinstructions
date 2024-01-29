@@ -1,4 +1,4 @@
-import model DMSimpt_NLO_v1_3_UFO-S3D_uni --modelname
+import model DMSimpt_NLO_v1_3_UFO-F3V_uni --modelname
 define qq = u c t d s b u~ c~ t~ d~ s~ b~
 define xx = xv
 define yy = yf3u3 yf3u3~

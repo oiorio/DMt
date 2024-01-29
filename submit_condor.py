@@ -26,6 +26,7 @@ elif username == 'acagnott':
     uid = 140541
 elif username == 'oiorio':
     uid = 31365
+#da generalizzare 
 
 mode=opt.mode
 
@@ -289,8 +290,8 @@ runner_dir=basedir+"/condor/work/"+label
 
 #runner_dir
 
-eosdir="/tmp/mjf-oiorio/"
-outeosdir="/eos/home-o/oiorio/DMMC/Events/"
+eosdir="/tmp/mjf-oiorio/" #da generalizzare 
+outeosdir="/eos/home-o/oiorio/DMMC/Events/" #da generalizzare 
 work_dir=eosdir+"/condor/work/"+label
 out_eosdir=outeosdir+"/condor/work/"+label
 #work_dir=basedir+"/condor/work/"+label#make local work directory 

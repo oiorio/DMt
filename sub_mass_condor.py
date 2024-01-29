@@ -1,536 +1,350 @@
 import os
 import optparse
-import shutil
+import sys
+import fileinput
+import time
 
-usage = 'python sub_mass_condor.py -o out_work_dir -w work_dir -n dryrun -r True' 
+usage = 'python submit_condor.py -r runmg.mg  -g runmg_generata.mg -O local_directory -o eos_directory' 
 parser = optparse.OptionParser(usage)
-#parser.add_option('-o','--output', dest='out_store_dir',type=str,default='/eos/home-o/oiorio/DMMC/XSecs',help='file storage directory')
-#parser.add_option('-w','--work', dest='work_dir',type=str,default='/eos/home-o/oiorio/DMMC/Events',help='work directory')
-
-parser.add_option('-o','--output', dest='out_store_dir',type=str,default='/eos/home-o/oiorio/DMMC/Events',help='file storage directory')
-parser.add_option('-w','--work', dest='work_dir',type=str,default='/tmp/mjf-oiorio/',help='work directory')
-
-parser.add_option('-r','--resubmit_failed', dest='resubmit_failed', type=int, default = 1, help="resubmit failed files in the out_store_dir or work_dir. Suggested option as it will also submit new jobs")
-parser.add_option('-n','--dryrun', dest='dryrun', default = False, action='store_true', help="dryrun")
-parser.add_option('-g','--group', dest='grouprun', default = False, action='store_true', help="group several runs together")
-parser.add_option('-c','--clear', dest='clear', default = False, action='store_true', help="clear the directories from heavy files")
-parser.add_option('--forceclear', dest='forceclear', default = False, action='store_true', help="clear the directory from heavy files regardless of the success state")
-parser.add_option('--nosubmit', dest='nosubmit', default = False, action='store_true', help="create the cfg files but do not sobmit the jobs")
-parser.add_option('-m','--minimum', dest='minimum',type=int,default=2,help="minimum mass point (*200), default =2 (=400),")
-parser.add_option('-M','--maximum', dest='maximum',type=int,default=2,help="maximum mass point (*200), default =10-1 (=1800),")
-parser.add_option('-f','--force', dest='force', default = False, action='store_true', help="force running on condor even if the directory is there")
-parser.add_option('-t','--test', dest='test', default = False, action='store_true', help="run on a test file only")
-
-parser.add_option('--model', dest='model',type=str,default='f3c_yyqcd_nlo',help='model to run')
-
-
+parser.add_option('-m', '--mode', dest='mode', type=str, default = '', help='Enter mode: G = Generate, M = Madanalysis, default = GM' )
+parser.add_option('-r', '--runmg', dest='runmg', type=str, default = '', help='Please enter conf file')
+parser.add_option('-g', '--runmg_generate', dest='runmg_generate', type=str, default = '', help='Please enter generation file')
+parser.add_option('-R', '--runmg_recast', dest='runmg_recast', type=str, default = '', help='Please enter recast file')
+parser.add_option('-S', '--runmg_sfs', dest='runmg_sfs', type=str, default = '', help='Please enter sfs file')
+parser.add_option('-l', '--label', dest='job_label', type=str, default = 'job0', help='Please enter job label')
+parser.add_option('-O', dest='output_file',type=str,default='',help='madgraph output directory')
+parser.add_option('-o','--output', dest='out_store_dir',type=str,default='/eos/home-o/oiorio/DMMC/XSecs',help='file storage directory')
+parser.add_option('--dryrun', dest='dryrun', default = False, action='store_true', help="dryrun")
 (opt, args) = parser.parse_args()
+#Insert here your uid... you can see it typing echo $uid
 
+username = str(os.environ.get('USER'))
+inituser = str(os.environ.get('USER')[0])
+if username == 'adeiorio':
+    uid = 103214
+elif username == 'acagnott':
+    uid = 140541
+elif username == 'oiorio':
+    uid = 31365
 
-out_store_dir=opt.out_store_dir#"/eos/home-o/oiorio/DMMC/XSecs"
-work_dir=opt.work_dir
-doresub=opt.resubmit_failed
-doforce=opt.force
+mode=opt.mode
 
-models_f3c_yyqcd_nlo={"F3C_YYQCD_NLO_SMt":("F3C_YYQCD_NLO_SMt_MY1300_MX900_topologyinstructions","F3C_YYQCD_NLO_SMt_MY1300_MX900_runinstructions",
-                             {"out":"output DMtsimp/MG5Runs/F3C_YYQCD_NLO_SMt_MY1300_MX900","mx":"MXc","my":"MYF3u3"},
-                             "F3C_YYQCD_NLO_SMt_MY1300_MX900_MA5recastinstructions_proto",{"imp":"import /afs/cern.ch/work/o/oiorio/DMMC/MG5_aMC_v2_9_15/","imp2":"import PYTHIAFILE as F3C_YYQCD_NLO_SMt_MY1300_MX900","imp3":"set main.recast.card_path = /afs/cern.ch/work/o/oiorio/DMMC/MG5_aMC_v2_9_15/RecastingCards/recasting_card_2023.dat","xs2":"set F3S_YYQCD_NLO_SMt_MY1300_MX900.xsection = SED_CROSSSECTION" },"F3C_YYQCD_NLO_SMt_MY1300_MX900_sfsinstructions_proto")}
-
-models_f3c_xx_nlo={"F3C_XX_NLO_SMt":("F3C_XX_NLO_SMt_MY1300_MX900_topologyinstructions","F3C_XX_NLO_SMt_MY1300_MX900_runinstructions",
-                             {"out":"output DMtsimp/MG5Runs/F3C_XX_NLO_SMt_MY1300_MX900","mx":"MXc","my":"MYF3u3"},
-                             "F3C_XX_NLO_SMt_MY1300_MX900_MA5recastinstructions_proto",{"imp":"import /afs/cern.ch/work/o/oiorio/DMMC/MG5_aMC_v2_9_15/","imp2":"import PYTHIAFILE as F3C_XX_NLO_SMt_MY1300_MX900","imp3":"set main.recast.card_path = /scratch/lp1c12/DMtsimp_project/DMspin/DMtsimp/core/Cards/recasting_card_2023.dat","xs2":"set F3C_XX_NLO_SMt_MY1300_MX900.xsection = SED_CROSSSECTION" },"F3C_XX_NLO_SMt_MY1300_MX900_sfsinstructions_proto")}
-
-models_f3s_xx_nlo={"F3S_XX_NLO_SMt":("F3S_XX_NLO_SMt_MY1300_MX900_topologyinstructions","F3S_XX_NLO_SMt_MY1300_MX900_runinstructions",
-                             {"out":"output DMtsimp/MG5Runs/F3S_XX_NLO_SMt_MY1300_MX900","mx":"MXs","my":"MYF3u3"},
-                             "F3S_XX_NLO_SMt_MY1300_MX900_MA5recastinstructions_proto",{"imp":"import /afs/cern.ch/work/o/oiorio/DMMC/MG5_aMC_v2_9_15/","imp2":"import PYTHIAFILE as F3S_XX_NLO_SMt_MY1300_MX900","imp3":"set main.recast.card_path = /scratch/lp1c12/DMtsimp_project/DMspin/DMtsimp/core/Cards/recasting_card_2023.dat","xs2":"set F3S_XX_NLO_SMt_MY1300_MX900.xsection = SED_CROSSSECTION" },"F3S_XX_NLO_SMt_MY1300_MX900_sfsinstructions_proto")}
-
-models_f3s_xx_lo={"F3S_XX_LO_SMt":("F3S_XX_LO_SMt_MY1300_MX900_topologyinstructions","F3S_XX_LO_SMt_MY1300_MX900_runinstructions",
-                             {"out":"output DMtsimp/MG5Runs/F3S_XX_LO_SMt_MY1300_MX900","mx":"MXs","my":"MYF3u3"},
-                             "F3S_XX_LO_SMt_MY1300_MX900_MA5recastinstructions_proto",{"imp":"import /afs/cern.ch/work/o/oiorio/DMMC/MG5_aMC_v2_9_15/","imp2":"import PYTHIAFILE as F3S_XX_LO_SMt_MY1300_MX900","imp3":"set main.recast.card_path = /scratch/lp1c12/DMtsimp_project/DMspin/DMtsimp/core/Cards/recasting_card_2023.dat","xs2":"set F3S_XX_LO_SMt_MY1300_MX900.xsection = SED_CROSSSECTION" },"F3S_XX_LO_SMt_MY1300_MX900_sfsinstructions_proto")}
-
-#f3v
-models_f3v_yyqcd_nlo={"F3V_YYQCD_NLO_SMt":("F3V_YYQCD_NLO_SMt_MY1300_MX900_topologyinstructions","F3V_YYQCD_NLO_SMt_MY1300_MX900_runinstructions",
-                             {"out":"output DMtsimp/MG5Runs/F3V_YYQCD_NLO_SMt_MY1300_MX900","mx":"MXv","my":"MYF3u3"},
-                             "F3V_YYQCD_NLO_SMt_MY1300_MX900_MA5recastinstructions_proto",{"imp":"import /afs/cern.ch/work/o/oiorio/DMMC/MG5_aMC_v2_9_15/","imp2":"import PYTHIAFILE as F3V_YYQCD_NLO_SMt_MY1300_MX900","imp3":"set main.recast.card_path = /afs/cern.ch/work/o/oiorio/DMMC/MG5_aMC_v2_9_15/RecastingCards/recasting_card_2023.dat","xs2":"set F3V_YYQCD_NLO_SMt_MY1300_MX900.xsection = SED_CROSSSECTION" },"F3V_YYQCD_NLO_SMt_MY1300_MX900_sfsinstructions_proto")}
-
-models_f3v_xx_nlo={"F3V_XX_NLO_SMt":("F3V_XX_NLO_SMt_MY1300_MX900_topologyinstructions","F3V_XX_NLO_SMt_MY1300_MX900_runinstructions",
-                             {"out":"output DMtsimp/MG5Runs/F3V_XX_NLO_SMt_MY1300_MX900","mx":"MXv","my":"MYF3u3"},
-                             "F3V_XX_NLO_SMt_MY1300_MX900_MA5recastinstructions_proto",{"imp":"import /afs/cern.ch/work/o/oiorio/DMMC/MG5_aMC_v2_9_15/","imp2":"import PYTHIAFILE as F3V_XX_NLO_SMt_MY1300_MX900","imp3":"set main.recast.card_path = /scratch/lp1c12/DMtsimp_project/DMspin/DMtsimp/core/Cards/recasting_card_2023.dat","xs2":"set F3V_XX_NLO_SMt_MY1300_MX900.xsection = SED_CROSSSECTION" },"F3V_XX_NLO_SMt_MY1300_MX900_sfsinstructions_proto")}
-
-
-#f3w
-models_f3w_yyqcd_nlo={"F3W_YYQCD_NLO_SMt":("F3W_YYQCD_NLO_SMt_MY1300_MX900_topologyinstructions","F3W_YYQCD_NLO_SMt_MY1300_MX900_runinstructions",
-                             {"out":"output DMtsimp/MG5Runs/F3W_YYQCD_NLO_SMt_MY1300_MX900","mx":"MXw","my":"MYF3u3"},
-                             "F3W_YYQCD_NLO_SMt_MY1300_MX900_MA5recastinstructions_proto",{"imp":"import /afs/cern.ch/work/o/oiorio/DMMC/MG5_aMC_v2_9_15/","imp2":"import PYTHIAFILE as F3W_YYQCD_NLO_SMt_MY1300_MX900","imp3":"set main.recast.card_path = /afs/cern.ch/work/o/oiorio/DMMC/MG5_aMC_v2_9_15/RecastingCards/recasting_card_2023.dat","xs2":"set F3W_YYQCD_NLO_SMt_MY1300_MX900.xsection = SED_CROSSSECTION" },"F3W_YYQCD_NLO_SMt_MY1300_MX900_sfsinstructions_proto")}
-
-models_f3w_xx_nlo={"F3W_XX_NLO_SMt":("F3W_XX_NLO_SMt_MY1300_MX900_topologyinstructions","F3W_XX_NLO_SMt_MY1300_MX900_runinstructions",
-                             {"out":"output DMtsimp/MG5Runs/F3W_XX_NLO_SMt_MY1300_MX900","mx":"MXw","my":"MYF3u3"},
-                             "F3W_XX_NLO_SMt_MY1300_MX900_MA5recastinstructions_proto",{"imp":"import /afs/cern.ch/work/o/oiorio/DMMC/MG5_aMC_v2_9_15/","imp2":"import PYTHIAFILE as F3W_XX_NLO_SMt_MY1300_MX900","imp3":"set main.recast.card_path = /scratch/lp1c12/DMtsimp_project/DMspin/DMtsimp/core/Cards/recasting_card_2023.dat","xs2":"set F3W_XX_NLO_SMt_MY1300_MX900.xsection = SED_CROSSSECTION" },"F3W_XX_NLO_SMt_MY1300_MX900_sfsinstructions_proto")}
-
-
-
-
-#s3d
-models_s3d_yyqcd_nlo={"S3D_YYQCD_NLO_SMt":("S3D_YYQCD_NLO_SMt_MY1300_MX900_topologyinstructions","S3D_YYQCD_NLO_SMt_MY1300_MX900_runinstructions",
-                             {"out":"output DMtsimp/MG5Runs/S3D_YYQCD_NLO_SMt_MY1300_MX900","mx":"MXd","my":"MYS3u3"},
-                             "S3D_YYQCD_NLO_SMt_MY1300_MX900_MA5recastinstructions_proto",{"imp":"import /afs/cern.ch/work/o/oiorio/DMMC/MG5_aMC_v2_9_15/","imp2":"import PYTHIAFILE as S3D_YYQCD_NLO_SMt_MY1300_MX900","imp3":"set main.recast.card_path = /afs/cern.ch/work/o/oiorio/DMMC/MG5_aMC_v2_9_15/RecastingCards/recasting_card_2023.dat","xs2":"set S3D_YYQCD_NLO_SMt_MY1300_MX900.xsection = SED_CROSSSECTION" },"S3D_YYQCD_NLO_SMt_MY1300_MX900_sfsinstructions_proto")}
-
-models_s3d_xx_nlo={"S3D_XX_NLO_SMt":("S3D_XX_NLO_SMt_MY1300_MX900_topologyinstructions","S3D_XX_NLO_SMt_MY1300_MX900_runinstructions",
-                             {"out":"output DMtsimp/MG5Runs/S3D_XX_NLO_SMt_MY1300_MX900","mx":"MXd","my":"MYS3u3"},
-                             "S3D_XX_NLO_SMt_MY1300_MX900_MA5recastinstructions_proto",{"imp":"import /afs/cern.ch/work/o/oiorio/DMMC/MG5_aMC_v2_9_15/","imp2":"import PYTHIAFILE as S3D_XX_NLO_SMt_MY1300_MX900","imp3":"set main.recast.card_path = /scratch/lp1c12/DMtsimp_project/DMspin/DMtsimp/core/Cards/recasting_card_2023.dat","xs2":"set S3D_XX_NLO_SMt_MY1300_MX900.xsection = SED_CROSSSECTION" },"S3D_XX_NLO_SMt_MY1300_MX900_sfsinstructions_proto")}
-
-
-
-#s3m
-models_s3m_yyqcd_nlo={"S3M_YYQCD_NLO_SMt":("S3M_YYQCD_NLO_SMt_MY1300_MX900_topologyinstructions","S3M_YYQCD_NLO_SMt_MY1300_MX900_runinstructions",
-                             {"out":"output DMtsimp/MG5Runs/S3M_YYQCD_NLO_SMt_MY1300_MX900","mx":"MXw","my":"MYF3u3"},
-                             "S3M_YYQCD_NLO_SMt_MY1300_MX900_MA5recastinstructions_proto",{"imp":"import /afs/cern.ch/work/o/oiorio/DMMC/MG5_aMC_v2_9_15/","imp2":"import PYTHIAFILE as S3M_YYQCD_NLO_SMt_MY1300_MX900","imp3":"set main.recast.card_path = /afs/cern.ch/work/o/oiorio/DMMC/MG5_aMC_v2_9_15/RecastingCards/recasting_card_2023.dat","xs2":"set F3S_YYQCD_NLO_SMt_MY1300_MX900.xsection = SED_CROSSSECTION" },"S3M_YYQCD_NLO_SMt_MY1300_MX900_sfsinstructions_proto")}
-
-models_s3m_xx_nlo={"S3M_XX_NLO_SMt":("S3M_XX_NLO_SMt_MY1300_MX900_topologyinstructions","S3M_XX_NLO_SMt_MY1300_MX900_runinstructions",
-                             {"out":"output DMtsimp/MG5Runs/S3M_XX_NLO_SMt_MY1300_MX900","mx":"MXw","my":"MYF3u3"},
-                             "S3M_XX_NLO_SMt_MY1300_MX900_MA5recastinstructions_proto",{"imp":"import /afs/cern.ch/work/o/oiorio/DMMC/MG5_aMC_v2_9_15/","imp2":"import PYTHIAFILE as S3M_XX_NLO_SMt_MY1300_MX900","imp3":"set main.recast.card_path = /scratch/lp1c12/DMtsimp_project/DMspin/DMtsimp/core/Cards/recasting_card_2023.dat","xs2":"set S3M_XX_NLO_SMt_MY1300_MX900.xsection = SED_CROSSSECTION" },"S3M_XX_NLO_SMt_MY1300_MX900_sfsinstructions_proto")}
-
-
-
-
-
-models={}
-if opt.model=="f3c_yyqcd_nlo":
-    models=models_f3c_yyqcd_nlo
-    from success_mass_pairs_f3c_yyqcd_nlo import successful_pairs
-if opt.model=="f3c_xx_nlo":
-    models=models_f3c_xx_nlo
-    if(os.path.exists("success_mass_pairs_f3c_xx_nlo.py") ): 
-       from success_mass_pairs_f3c_xx_nlo import successful_pairs
-    else:
-       successful_pairs={"F3C_XX_NLO_SMt":[]}
-if opt.model=="f3s_xx_nlo":
-    models=models_f3s_xx_nlo
-    if(os.path.exists("success_mass_pairs_f3s_xx_nlo.py") ): 
-       from success_mass_pairs_f3s_xx_nlo import successful_pairs
-    else:
-       successful_pairs={"F3S_XX_NLO_SMt":[]}
-if opt.model=="f3s_xx_lo":
-    models=models_f3s_xx_lo
-    from success_mass_pairs_f3s_xx_lo import successful_pairs
-
-#f3v
-if opt.model=="f3v_xx_nlo":
-    models=models_f3v_xx_nlo
-    if(os.path.exists("success_mass_pairs_f3v_xx_nlo.py") ): 
-       from success_mass_pairs_f3v_xx_nlo import successful_pairs
-    else:
-       successful_pairs={"F3V_XX_NLO_SMt":[]}
-if opt.model=="f3v_yyqcd_nlo":
-    models=models_f3v_yyqcd_nlo
-    if(os.path.exists("success_mass_pairs_f3v_yyqcd_nlo.py") ): 
-       from success_mass_pairs_f3v_yyqcd_nlo import successful_pairs
-    else:
-       successful_pairs={"F3V_YYQCD_NLO_SMt":[]}
-#f3w
-if opt.model=="f3w_xx_nlo":
-    models=models_f3w_xx_nlo
-    if(os.path.exists("success_mass_pairs_f3w_xx_nlo.py") ): 
-       from success_mass_pairs_f3w_xx_nlo import successful_pairs
-    else:
-       successful_pairs={"F3W_XX_NLO_SMt":[]}
-if opt.model=="f3w_yyqcd_nlo":
-    models=models_f3w_yyqcd_nlo
-    if(os.path.exists("success_mass_pairs_f3w_yyqcd_nlo.py") ): 
-       from success_mass_pairs_f3w_yyqcd_nlo import successful_pairs
-    else:
-       successful_pairs={"F3W_YYQCD_NLO_SMt":[]}
-
-
-#s3d
-if opt.model=="s3d_xx_nlo":
-    models=models_s3d_xx_nlo
-    if(os.path.exists("success_mass_pairs_s3d_xx_nlo.py") ): 
-       from success_mass_pairs_s3d_xx_nlo import successful_pairs
-    else:
-       successful_pairs={"S3D_XX_NLO_SMt":[]}
-if opt.model=="s3d_yyqcd_nlo":
-    models=models_s3d_yyqcd_nlo
-    if(os.path.exists("success_mass_pairs_s3d_yyqcd_nlo.py") ): 
-       from success_mass_pairs_s3d_yyqcd_nlo import successful_pairs
-    else:
-       successful_pairs={"S3D_YYQCD_NLO_SMt":[]}
-
-
-#s3m
-if opt.model=="s3m_xx_nlo":
-    models=models_s3m_xx_nlo
-    if(os.path.exists("success_mass_pairs_s3m_xx_nlo.py") ): 
-       from success_mass_pairs_s3m_xx_nlo import successful_pairs
-    else:
-       successful_pairs={"S3M_XX_NLO_SMt":[]}
-if opt.model=="s3m_yyqcd_nlo":
-    models=models_s3m_yyqcd_nlo
-    if(os.path.exists("success_mass_pairs_s3m_yyqcd_nlo.py") ): 
-       from success_mass_pairs_s3m_yyqcd_nlo import successful_pairs
-    else:
-       successful_pairs={"S3M_YYQCD_NLO_SMt":[]}
-
-
-#from success_mass_pairs_f3s_xx import successful_pairs
-print("models are"), models
-
-
-
-YMasses=[1800]
-XMasses=[900,1100,1300]
-XMasses=[1100,900]
-XMasses=[1100,900]
-
-YMasses=[1300]
-XMasses=[500]
-YMasses=[3000]
-#XMasses=[2000]
-XMasses=[2200]
-
-fullloop = True
-fullloop = False
-fullloop= not opt.test
-
-FailMassPairs=[]
-FailMadanPairs=[]
-SuccessMassPairs=[]
-
-
-Min = opt.minimum 
-Max = opt.maximum
-if(fullloop):
-    YMasses=[i*200 for i in range(Min,Max)]
-#    YMasses=[i*200 for i in range(10,14)]
-#    YMasses=[i*200 for i in range(13,16)]
-#    YMasses=[i*200 for i in range(2,16)]
-    XMasses=[1,10,50,100]
-    XMasses.extend([i*200 for i in range(1,16)])
-mTop=172
-nremovedfortop=0
-dir_evts_pythia_point=""
-if (doresub):
-    for m in models:
-        for mY in YMasses:
-            for mX in XMasses:
-                if(mX>mY):continue
-                if(mX==mY):mX=mY-5
-                if( ( "YYQCD" in m ) and  mY-mX<mTop):
-                    nremovedfortop+=1
-                    continue
-                MX="MX"+str(mX)
-                MY="MY"+str(mY)
-                fullname=m+"_"+MY+"_"+MX
-                dir_point=out_store_dir+"/condor/work/"+fullname
-                dirhappened = os.path.exists(dir_point+"_ANALYSIS_0")
-                point_failed=True
-                hepmc_failed=True
-                analhappened=False
-                if("YYQCD" in m):
-                    dir_evts_pythia=dir_point+"/DMtsimp/MG5Runs/"+fullname+"/Events/run_01_decayed_1/events_PYTHIA8_0.hepmc.gz"
-                if("XX" in m):
-                    dir_evts_pythia=dir_point+"/DMtsimp/MG5Runs/"+fullname+"/Events/run_01/tag_1_pythia8_events.hepmc.gz"
-                dir_evts_pythia_point=dir_evts_pythia
-                print("MY= ", MY, " MX= ",MX," dir evts pythia at mass ",dir_evts_pythia_point)
-                if(dirhappened):
-                    print(" point ",fullname, " happened at ",dir_point)
-                    anal_evts=dir_point+"_ANALYSIS_0/Output/SAF/CLs_output_summary.dat"
-                    dir_evts=dir_point+"/summary.txt"
-                    
-                    #anal_evts=dir_point+"/madanalysis5/ANALYSIS_0/Output/SAF/CLs_output_summary.dat"
-                    #dir_evts=dir_point+"/DMtsimp/MG5Runs/"+fullname+"/Events/run_01/summary.txt"
-
-                    evtshappened=os.path.exists(dir_evts)
-                    analhappened=os.path.exists(anal_evts)
-                    print(" analysis dir: " ,anal_evts,"analysis happened?",analhappened)    
-                    evtshappened=evtshappened and os.path.exists(dir_evts_pythia)
-                    if (evtshappened):
-                        hepmc_failed=False
-                    print(" events dir: " ,dir_evts_pythia,"events happened?",evtshappened)    
-
-                    dir_evts_madanal=dir_point+"/ANALYSIS_1"
-                    evtshappened= os.path.exists(dir_evts_madanal)
-                    if(analhappened):
-                        print(" point ",fullname, " ran events at ",dir_evts)
-                        os.system("tail -20 "+dir_evts)
-                        point_failed=False
-                if(not analhappened):
-                    if(hepmc_failed):
-                        FailMassPairs.append((mY,mX))
-                    if(point_failed):
-                        FailMadanPairs.append((mY,mX))
-                if(analhappened):
-                    print ("success " , (mY,mX)," |||||||||" )
-                    SuccessMassPairs.append((mY,mX))
-
-print("Failed mass pairs are: ",FailMassPairs )
-print("n Failed masses: ",len(FailMassPairs) )
-print("Failed madanpairs are: ",FailMadanPairs )
-print("n Failed madan: ",len(FailMadanPairs) )
-print("n Removed for mX-mY>mTop  : ",nremovedfortop)
-print(" mass list length ")
-
-
-
-#XMasses=[1300]
-nevents="1000"
-if (fullloop):
-    nevents="100000"
-#    nevents="1000"
-nToRun=0
-for m in models:
-    string_cfg=""
-    string_generate_cfg=""
-    string_recast_cfg=""
-    string_sfs_cfg=""
-    runmg_cfg= open(models[m][0])
-    runmg_generate_cfg= open(models[m][1])
-    runmg_recast_cfg= open(models[m][3])
-    runmg_sfs_cfg= open(models[m][5])
-
-    for l in runmg_cfg.readlines():
-        string_cfg=string_cfg+l+""
-
-    for l in runmg_generate_cfg.readlines():
-        string_generate_cfg=string_generate_cfg+l+""
-
-    for l in runmg_recast_cfg.readlines():
-        string_recast_cfg=string_recast_cfg+l+""
-
-    for l in runmg_sfs_cfg.readlines():
-        string_sfs_cfg=string_sfs_cfg+l+""
-
-    print("default cfg is: ")
-    print(string_cfg)
-    print("default cfg generate is: ")
-    print(string_generate_cfg)
-    print("default cfg recast is: ")
-    print(string_recast_cfg)
-    print("default cfg sfs is: ")
-    print(string_sfs_cfg)
-
+def sub_writer(label,work_dir="./",basedir="./",runner_dir="./"):
+    f = open(runner_dir+"/condor.sub", "w")
+    f.write("Proxy_filename          = x509up\n")
+    f.write("Proxy_path              = /afs/cern.ch/user/" + inituser + "/" + username + "/private/$(Proxy_filename)\n")
+    f.write("universe                = vanilla\n")
+    f.write("x509userproxy           = $(Proxy_path)\n")
+    f.write("use_x509userproxy       = true\n")
+    f.write("should_transfer_files   = YES\n")
+    f.write("when_to_transfer_output = ON_EXIT\n")
+    f.write("transfer_input_files    = $(Proxy_path)\n")
+    #f.write("transfer_output_remaps  = \""+outname+"_Skim.root=root://eosuser.cern.ch///eos/user/"+inituser + "/" + username+"/DarkMatter/topcandidate_file/"+dat_name+"_Skim.root\"\n")
+    #f.write('requirements = (TARGET.OpSysAndVer =?= "CentOS7") && Request_Disk >= 25000000\n')
+    #f.write('requirements = (TARGET.OpSysAndVer =?= "CentOS7") \n')
+    f.write('MY.WantOS               = "el7" \n')
     
+    #    f.write('requirements = (TARGET.OpSysAndVer =?= "AlmaLinux9") \n')
+    f.write("+JobFlavour             = \"testmatch\"\n") # options are espresso = 20 minutes, microcentury = 1 hour, longlunch = 2 hours, workday = 8 hours, tomorrow = 1 day, testmatch\ = 3 days, nextweek     = 1 week
+    #f.write("+JobFlavour             = \"microcentury\"\n") # options are espresso = 20 minutes, microcentury = 1 hour, longlunch = 2 hours, workday = 8 hours, tomorrow = 1 day, testmatch\ = 3 days, nextweek     = 1 week
+    f.write("executable              = "+runner_dir+"/runner.sh\n")
+    f.write("arguments               = \n")
+    #f.write("input                   = input.txt\n")
+    f.write("output                  = "+basedir+"/condor/output/"+ label+".out\n")
+    f.write("error                   = "+basedir+"/condor/error/"+ label+".err\n")
+    f.write("log                     = "+basedir+"/condor/log/"+ label+".log\n")
+
+    f.write("queue\n")
+
+def editrecastfile(summary,recast_file):
+    xsec = "1" 
+    if(not os.path.exists(summary)):
+        print("summary does not exist! Not changing the xsec")
+    else:    
+        with open(summary, "r") as fin:
+            flines = fin.readlines()
+            lxsec=""
+            for line in flines:
+                if "Total cross section" in line:
+                    lxsec= line
+            xsec=lxsec.split()[3]
+            print("xsec found is ",xsec)
+
+    print("recast exists? " ,os.path.exists(recast_file))
+    if(not os.path.exists(recast_file)):
+        print("recast file does not exist! Doing nothing")
+        return
     
-    for mY in YMasses:
-        for mX in XMasses:
-            if(mX>mY):continue
-            if(mX==mY):mX=mY-5
-            MX="MX"+str(mX)
-            MY="MY"+str(mY)
-            torun=(not doresub)
-            fullname=m+"_"+MY+"_"+MX
-            #torun=True
-            has_hepmc=True
+    #xsec=1.
+    with open(recast_file+"fix",'w') as fo:
+        stringrec=""
+        with open(recast_file,"r") as f2:#, 
+            #print("reading of the file ",f2.read())
+            f2.seek(0)
+            rlines = f2.readlines()
+            for li in rlines:
+                stringrec=stringrec+li.replace(".xsection = 1",".xsection = "+str(xsec)+"")
+                #print(stringrec)
+            f2.close()
+        fo.write(stringrec)
+        fo.close()
 
-
-            mode="M"
-            if(doresub):
-                if((mY,mX) in FailMassPairs and not ( ( (mY,mX) in SuccessMassPairs ) or ( (mY,mX) in successful_pairs) ) ):
-                    torun=True
-                    print("running failed mass - hepmc step ",MY,MX)
-                    rmdircmd= "rm "+ out_store_dir+"/condor/work/"+fullname+" -rf "
-                    print("emptying the folder before launching: ", rmdircmd)
-                    if not opt.dryrun:
-                        print()
-                        #os.system(rmdircmd)
-                    has_hepmc=False
-                    mode="GM"
-                if( (mY,mX) in FailMadanPairs and not ( ( (mY,mX) in SuccessMassPairs ) or ( (mY,mX) in successful_pairs) ) ):
-                    torun=True
-                    print("running failed mass -madan step ",MY,MX)
-                    rmdircmd= "rm "+ out_store_dir+"/condor/work/"+fullname+"/madanalysis5 -rf "
-                    rmdircmdt= "rm "+ out_store_dir+"/condor/work/"+fullname+"/tools -rf "
-                    rmdircmdf= "rm "+ out_store_dir+"/condor/work/"+fullname+"/*protofix -rf "
-                    print("emptying the folder before launching: ", rmdircmd)
-
-                    if not opt.dryrun:
-                        print()
-                        os.system(rmdircmd)
-                        os.system(rmdircmdt)
-                        os.system(rmdircmdf)
-            toclear=False
-            if ( (mY,mX) in SuccessMassPairs ) or (mY,mX) in successful_pairs[m]:
-                if ( (mY,mX) in successful_pairs[m] ):
-                    print(" successful pair ",mY,mX," imported from repo")
-                torun=False
-                toclear=True
-            if opt.forceclear:
-                torun=True
-            runmg_name=(models[m][0].replace("MY1300",MY).replace("MX900",MX))
-            runmg_generate_name=(models[m][1]).replace("MY1300",MY).replace("MX900",MX)
-            runmg_recast_name=(models[m][3]).replace("MY1300",MY).replace("MX900",MX)
-            runmg_sfs_name=(models[m][5].replace("MY1300",MY).replace("MX900",MX))
-           
-            if(torun or doforce):
-                print("ready to run mass ",MY,MX)
-                print (" mode is ",mode)
-                nToRun=nToRun+1
-            
-            if opt.dryrun:
-                print(" dryrun selected! Not actually running.")
-
+def runner_writer(conf_file, gen_file,output_file,out_store_dir,
+                  mgdir="/afs/cern.ch/work/o/oiorio/DMMC/MG5_aMC_v2_9_15",
+                  recast_file=None,sfs_file=None,xsec_file_format="parton_systematics",pyenvdir="py3_env2",recast_dir="/afs/cern.ch/work/o/oiorio/DMMC/MG5_aMC_v2_9_15/MA5/",
+                  runner_dir=".",work_dir=".", out_eosdir=".", mode= mode, useMadSTR=False):
+    os.system("rm "+runner_dir+"/runner.sh")
+    f = open(runner_dir+"/runner.sh", "w")
+    #    if not os.path.exists(work_dir):
+        #os.system("cp -r "+out_eosdir + " "+ work_dir)
+        #f.write("cmssw-el7")
+    f.write("#!/usr/bin/bash \n")
+    f.write("bash \n")
+    f.write("source "+mgdir+"/dmmc.sh \n")
+    f.write("echo $LD_LIBRARY_PATH \n" )
+    f.write("echo $PYTHONPATH \n" )
+    f.write("mkdir -p " + work_dir + "\n")
+    if not os.path.exists(out_eosdir):
+        f.write("mkdir -p " + out_eosdir + "\n")
+    f.write("cd "+work_dir +" \n")
+    if "G" in mode:
+        if not(useMadSTR):
+            f.write("python2.7 "+mgdir+"/bin/mg5_aMC "+mgdir+"/"+conf_file+"\n")
+            f.write("sleep 5 \n")
+            f.write("python2.7 "+mgdir+"/bin/mg5_aMC "+mgdir+"/"+gen_file+"\n")
+            f.write("sleep 5 \n")
+        else:
+            f.write("python2.7 "+mgdir+"/bin/mg5_aMC --mode=MadSTR "+mgdir+"/"+conf_file+"\n")
+            f.write("sleep 5 \n")
+            f.write("cd "+workdir+"\n")
+            f.write("cp "+workdir+"/bin/mg5_aMC "+mgdir+"/"+gen_file+" . \n")
+            f.write("python2.7 "+workdir+"/bin/aMCatNLO "+gen_file+"\n")
+            f.write("sleep 5 \n")
+    f.write("source /cvmfs/sw.hsf.org/spackages7/key4hep-stack/2023-04-08/x86_64-centos7-gcc11.2.0-opt/urwcv/setup.sh \n")
+    if (not (recast_file is None) and "M" in mode):
+        if not recast_file=='':
+            #f.write("source "+mgdir+"/"+pyenvdir+"/bin/activate \n")
+            f.write("cd "+mgdir +" \n")
+            recastform=""
+            if(xsec_file_format=="summary"):
+                recastform="/summary.txt -f "+xsec_file_format+" \n "
+            if(xsec_file_format=="parton_systematics"):
+                recastform="/parton_systematics.log -f "+xsec_file_format+" \n "
                 
-            if( (torun or doforce ) and not opt.dryrun):
-                print ("mx and my are ",mX,mY," runmg name ",runmg_name," generate name ",runmg_generate_name, " recast name ", runmg_recast_name, " sfs name ", runmg_sfs_name)
+            f.write("python "+mgdir+"/editrecastfile.py -r ./"+recast_file+ " -s "+work_dir+"/"+output_file+"/Events/run_01/"+recastform)
+            f.write("python "+mgdir+"/editrecastfile.py -r ./"+sfs_file+ " -s "+work_dir+"/"+output_file+"/Events/run_01/"+recastform)
+            f.write("cd " + work_dir +"\n")            
+            #old ideas
+            #editrecastfile(summary=work_dir+"/"+output_file+"/Events/run_01/summary.txt",recast_file="./"+recast_file)
+            #            f.write('bash \n')
+            #f.write("alias alias python=")
+            #f.write("rm ANALYSIS* madanalysis5 -rf \n")
+            #f.write("rm py3_env -rf \n")
+            #create the pyenv locally
+            #f.write("python3 -m venv py3_env3 \n")
 
-                os.system("rm "+ runmg_name)
-                os.system("rm "+ runmg_generate_name)
-                os.system("rm "+ runmg_recast_name)
-                os.system("rm "+ runmg_sfs_name)
+            
+            pyenv_dir="/afs/cern.ch/work/o/oiorio/DMMC/MG5_aMC_v2_9_15/py3_env3/bin/"
+            f.write("source "+pyenv_dir+"/activate \n")
+            
+            #pyenv_dir = work_dir+"/py3_env3/bin/"
+            #madandir=mgdir+"/madanalysis5"
+            madandir=work_dir#+"/madanalysis5"
+            #madandir = "/tmp/oiorio/"
+            f.write("echo $SCRAM_ARCH \n")
+            #f.write("source /cvmfs/sft.cern.ch/lcg/contrib/gcc/13/x86_64-centos7/setup.sh \n")
+            #f.write("source /cvmfs/sft.cern.ch/lcg/contrib/gcc/11.2.0/x86_64-centos7/setup.sh \n")
+            #f.write("source /cvmfs/sft.cern.ch/lcg/external/gcc/4.8.1/x86_64-centos7/setup.sh \n")
+            #echo $SCRAM_ARCH
+            #f.write('git clone https://github.com/MadAnalysis/madanalysis5.git madanalysis5 \n')
+            f.write("cd "+madandir+" \n")
+            f.write("rm madanalysis5 -rf \n")
+            f.write('git clone https://github.com/MadAnalysis/madanalysis5.git -b v1.10.10 madanalysis5 \n')
+            f.write('cp '+mgdir+'/install_zlib_fix.py '+madandir+'/madanalysis5/madanalysis/install/install_zlib.py \n')
+            f.write('cd '+madandir+'/madanalysis5 \n')
+            #f.write('cd madanalysis5 \n') #If
+            f.write('mkdir -p tools/PADForSFS \n')
+            f.write('chmod a+xr tools/PADForSFS \n')
+            
+            #pyenv version1
+            #f.write(pyenv_dir+'pip3 install -r '+recast_dir+"../madanalysis5/requirements.txt \n")
+            #f.write(pyenv_dir+'pip3 install --upgrade pip \n ')
+            #f.write("gcc --version \n")
+            #f.write("source "+mgdir+"/dmmc_madanalysis.sh \n")
+            #f.write(pyenv_dir+"/python3 "+recast_dir+"../madanalysis5/bin/ma5 -s "+recast_dir+"/MA5AuxiliaryFiles/MA5_installpackages \n")
+            #f.write(pyenv_dir+"/python3 "+recast_dir+"/madanalysis5/bin/ma5 -R -s "+mgdir+"/"+recast_file+"fix \n")
+            
+            #pyenv version2
+            f.write("pwd \n")
+            #f.write(pyenv_dir+'/pip3 install --upgrade pip \n')
+            #f.write(pyenv_dir+'/pip3 install -r requirements.txt \n')
+            f.write("gcc --version \n")
+            #            f.write("source "+mgdir+"/dmmc_madanalysis.sh \n")
+            
+            #Installing the madanalysis in the work directory ####
+            installmadan=False
+            installmadan=True
+            if(installmadan):
+                #madandir=work_dir+"/madanalysis5"
+                #madandir=
+                #root attempts
+                f.write("source /cvmfs/sft.cern.ch/lcg/app/releases/ROOT/6.24.08/x86_64-centos7-gcc48-opt/bin/thisroot.sh \n")
+                
+                print("installed at  ",madandir)
+                f.write("LD_LIBRARY_PATH=/afs/cern.ch/work/o/oiorio/DMMC/LHAPDFInstall/lib:$LD_LIBRARY_PATH \n")
+                f.write("LD_LIBRARY_PATH="+madandir+"/madanalysis5/tools/SampleAnalyzer/Lib:$LD_LIBRARY_PATH \n")
+                f.write("LD_LIBRARY_PATH="+madandir+"/madanalysis5/tools/SampleAnalyzer/ExternalSymLink/Lib:$LD_LIBRARY_PATH \n")
+                f.write("LD_LIBRARY_PATH="+madandir+"/madanalysis5/tools/delphes:$LD_LIBRARY_PATH \n")
+                f.write("export LD_LIBRARY_PATH \n")
+                #f.write("PYTHONPATH=/afs/cern.ch/work/o/oiorio/DMMC/LHAPDFInstall/lib/python2.7")
+                #export PYTHONPATH
+                f.write("ROOT_INCLUDE_PATH="+madandir+"/MA5/madanalysis5/tools/delphes/external:$ROOT_INCLUDE_PATH \n")
+                f.write("ROOT_INCLUDE_PATH="+madandir+"/madanalysis5/tools/delphes/external:$ROOT_INCLUDE_PATH \n")
+                f.write("export ROOT_INCLUDE_PATH \n")
 
-                runmg_cfg_mxmy=open(runmg_name,"w")
-                runmg_generate_cfg_mxmy=open(runmg_generate_name,"w")
-                runmg_recast_cfg_mxmy=open(runmg_recast_name,"w")
-                runmg_sfs_cfg_mxmy=open(runmg_sfs_name,"w")
+
+                pycommand="python "
+                usepyenv=False
+                if(usepyenv):
+                    pycommand=pyenv_dir+"/python3 "
+                
+                f.write(pycommand+madandir+"/madanalysis5/bin/ma5 -s "+recast_dir+"/MA5AuxiliaryFiles/MA5_installpackages_nondelphes \n")       
+                f.write("source /cvmfs/sft.cern.ch/lcg/views/LCG_102/x86_64-centos7-gcc11-opt/setup.sh \n")
+                f.write("source /cvmfs/sft.cern.ch/lcg/views/LCG_102/x86_64-centos7-gcc11-opt/bin/thisroot.sh \n")
+
+                f.write(pycommand+madandir+"/madanalysis5/bin/ma5 -s "+recast_dir+"/MA5AuxiliaryFiles/MA5_installpackages_delphes \n")
+                f.write(pycommand+madandir+"/madanalysis5/bin/ma5 -s "+recast_dir+"/MA5AuxiliaryFiles/MA5_installpackages_pad_only \n")
+
+                f.write("cp "+recast_dir+"/MA5AuxiliaryFiles/run_recast.py "+madandir+"/madanalysis5/madanalysis/misc/ \n")
+                f.write("cp "+recast_dir+"/MA5AuxiliaryFiles/recast_configuration.py "+madandir+"/madanalysis5/madanalysis/configuration/ \n")
+
+                f.write("cp "+mgdir+"/RecastingCards/delphes* "+madandir+"/madanalysis5/tools/PAD/Input/Cards/ \n")
+                f.write("cp "+mgdir+"/RecastingCards/sfs* "+madandir+"/madanalysis5/tools/PADForSFS/Input/Cards/ \n")
+
+                f.write("cp /afs/cern.ch/user/o/oiorio/public/DMMC/atlas_susy_2018_32.info "+madandir+"/madanalysis5/tools/PAD/Build/SampleAnalyzer/User/Analyzer/ \n")
+                f.write("mv "+madandir+"/madanalysis5/tools/PAD/Build/SampleAnalyzer/User/Analyzer/atlas_susy_2018_32_all.json "+madandir+"/madanalysis5/tools/PAD/Build/SampleAnalyzer/User/Analyzer/atlas_susy_2018_32.json \n")
+                
+            #ENDInstalling the madanalysis in the work directory 
+
+            f.write("pwd \n")
+
+
+
+            f.write("cp "+mgdir+"/"+recast_file+"fix . \n")
+            f.write("cp "+mgdir+"/"+sfs_file+"fix . \n")
+
+            f.write(pycommand+madandir+"/madanalysis5/bin/ma5 -R -s ./"+recast_file+"fix \n")
+            #f.write("cp -r "+madandir+"/madanalysis5/ANALYSIS_0 "+work_dir+"_ANALYSIS_0 \n")
+            f.write("rm -rf "+madandir+"ANALYSIS_0_RecastRun/Output/SAF/*/RecoEvents* \n")
+            f.write("cp -rf "+madandir+"/madanalysis5/ANALYSIS_0 "+out_eosdir+"_ANALYSIS_0 \n")
+
             
 
-                outsentence=models[m][2]["out"] 
-                rn_new=string_cfg
-                outreplace=outsentence.replace("MX900",MX).replace("MY1300",MY)
-                print(outsentence,outreplace)
-                rn_new=rn_new.replace(outsentence,outreplace)
-                runmg_cfg_mxmy.write(rn_new)
-                runmg_cfg_mxmy.close()
+            ###
+            f.write("cp -rf " + work_dir+"/"+output_file+"/Events/run_01/events.lhe.gz " + out_eosdir+"/ \n")
+            f.write("cp -rf " + work_dir+"/"+output_file+"/Events/run_01/unweighted_events.lhe.gz " + out_eosdir+"/ \n")
+            f.write("cp -rf " + work_dir+"/"+output_file+"/Events/run_01_decayed_1/events.lhe.gz " + out_eosdir+"/events_decayed_1.lhe.gz \n")
+
+            ###
+            f.write("cp -rf " + work_dir+"/"+output_file+"/Events/run_01/summary.txt " + out_eosdir+"/ \n")
+            f.write("cp -rf " + work_dir+"/"+output_file+"/Events/run_01/parton_systematics.log " + out_eosdir+"/ \n")
+            f.write("cp -rf " + work_dir+"/"+output_file+"/Events/run_01_decayed_01/run_01_decayed_1_tag_1_banner.txt " + out_eosdir+"/ \n")
 
 
-                mxsentence="set "+ models[m][2]["mx"] +" = 900"
-                mysentence="set "+ models[m][2]["my"] +" = 1300"
-                launchsentence=models[m][2]["out"].replace("output","launch")
-                launchreplace=launchsentence.replace("MX900",MX).replace("MY1300",MY)
-                print(launchsentence,launchreplace)
-
-
-                evsentence="set nevents=1000"
-                sg_new= string_generate_cfg
-                sg_new=sg_new.replace(launchsentence,launchreplace)
-                sg_new=sg_new.replace(mxsentence,mxsentence.replace("900",str(mX)))
-                sg_new=sg_new.replace(mysentence,mysentence.replace("1300",str(mY)))
-                sg_new=sg_new.replace(evsentence,evsentence.replace("1000",nevents))
-                runmg_generate_cfg_mxmy.write(sg_new)
-                runmg_generate_cfg_mxmy.close()
             
-                impsentence=models[m][4]["imp"] 
-                dir_point=work_dir+"/condor/work/"+fullname+"/"
-                #out_dir_point=out_store_dir+"/condor/work/"+fullname+"/"
-                if("YY" in m):
-                    dir_evts_pythia=dir_point+"/DMtsimp/MG5Runs/"+fullname+"/Events/run_01_decayed_1/events_PYTHIA8_0.hepmc.gz"
-                if("XX" in m):
-                    dir_evts_pythia=dir_point+"/DMtsimp/MG5Runs/"+fullname+"/Events/run_01/tag_1_pythia8_events.hepmc.gz"
-                dir_evts_pythia_point=dir_evts_pythia
-                print("m= ", m," MY= ", MY, " MX= ",MX," dir evts pythia at mass ",dir_evts_pythia_point)
-                impreplace=impsentence.replace(impsentence,"import "+dir_point)
-                
-                impsentence2=models[m][4]["imp2"].replace("MY1300",MY).replace("MX900",MX)
-                print("impsent 2 is ",impsentence2," dir_evts ",dir_evts_pythia_point)
-                impreplace2=impsentence2.replace(impsentence2,"import "+dir_evts_pythia_point+" as "+fullname)
+            #f.write("cp -r " + work_dir+"/"+output_file+"/Events/run_01/summary.txt" + out_eosdir+"/")
+            f.write(pycommand+madandir+"/madanalysis5/bin/ma5 -s ./"+sfs_file+"fix \n")
 
-                impsentence3=models[m][4]["imp3"] 
-                impreplace3=impsentence3.replace(impsentence3,"set main.recast.card_path = /afs/cern.ch/work/o/oiorio/DMMC/MG5_aMC_v2_9_15/RecastingCards/recasting_card_2023.dat")
+            f.write("rm -rf "+madandir+"/madanalysis5/ANALYSIS_1/Output/SAF/*/lheEvents0_0/ma5_events.lhe* \n")
+            f.write("cp -rf "+madandir+"/madanalysis5/ANALYSIS_1 "+out_eosdir+"_ANALYSIS_1 \n")
 
-                sr_new= string_recast_cfg
-                sr_new= sr_new.replace("MY1300",MY).replace("MX900",MX)
-                sr_new = sr_new.replace(impsentence,impreplace) 
-                sr_new = sr_new.replace(impsentence2,impreplace2) 
-                sr_new= sr_new.replace(impsentence3,impreplace3)
-                runmg_recast_cfg_mxmy.write(sr_new)
-                runmg_recast_cfg_mxmy.close()
+            
+            f.write("cd "+work_dir+" \n")
+            f.write(pycommand+mgdir+"/cleardir.py -d ./ -f "+output_file +" -p 'DMtsimp/MG5Runs/' \n")
+            if (work_dir != out_eosdir) and not (out_eosdir is None):
+                f.write("sleep 10 \n") #wait a few seconds to make sure to not remove anything important
+                f.write("rm -rf "+ work_dir+" \n")
+            f.close()
 
+    pycommand="python "
+    fcl = open(runner_dir+"/cleaner.sh", "w")
+    fcl.write("cd "+work_dir+" \n")
+    fcl.write(pycommand+mgdir+"/cleardir.py -F -d ./ -f "+output_file +" -p 'DMtsimp/MG5Runs/' \n")
+    fcl.write("cd - \n")
+    print("fcl is ", fcl)
+    fcl.close()
 
-                sfs_new = string_sfs_cfg
-                sfs_new = sfs_new.replace("MY1300",MY).replace("MX900",MX)
-                sfs_new = sfs_new.replace(impsentence2,impreplace2) 
-                sfs_new= sfs_new.replace(impsentence3,impreplace3)
+                #f.write(pyenv_dir+"/python3 "+madandir+"/bin/ma5 -R -s ./"+recast_file+"fix \n")
 
-                runmg_sfs_cfg_mxmy.write(sfs_new)
-                runmg_sfs_cfg_mxmy.close()
-
-                
-            local_out_dir=models[m][2]["out"].replace("output","").replace(" ","")
-            print("file is ")
-            #print("local_out_dir ",type(local_out_dir))
-            local_out_dir=local_out_dir.replace("MX900",MX).replace("MY1300",MY)
-            #out_store_dir_local=out_store_dir+"/eos/home-o/oiorio/DMMC/XSecs/"+local_out_dir
-            #            out_store_dir_local=out_store_dir+"/eos/home-o/oiorio/DMMC/XSecs/"+local_out_dir
-            if(opt.clear or opt.forceclear ):
-                mode = "C"
-##                if opt.forceclear
-#                mode = "CC"
-                if(toclear):
-                    print(" clearing mass point mY ",mY, " mX ",mX)
-            command_sub =" python submit_condor.py -m "+mode+" -r "+ runmg_name +" -g " +runmg_generate_name + " -R " + runmg_recast_name + " -S "+ runmg_sfs_name + " -O "+ local_out_dir + " -o " + out_store_dir + " -l " +m+"_"+MY+"_"+MX+" & "
-            print ("command submit is: ",command_sub)
-            if( (torun or doforce ) and not opt.dryrun):
-                print()
-                if( torun or toclear or doforce ):
-                    print(" running! ",MY,MX )
-                    if (not opt.nosubmit): os.system(command_sub)
-                    
-print(" points list length ",nToRun)
-print(" failed mg5 pairs ",FailMassPairs)
-FailMadanOnlyPairs=[]
-for fa in FailMadanPairs:
-    if not fa in FailMassPairs:
-        FailMadanOnlyPairs.append(fa)
-print(" failed madan only pairs ",FailMadanOnlyPairs)
-print(" successful pairs ",SuccessMassPairs)
-print(" n successful pairs ",len(SuccessMassPairs))
-
-shutil.copy("success_mass_pairs.py","success_mass_pairs_backup.py")
-
-fos = open("success_mass_pairs.py","w")
-fos.write("successful_pairs ={} \n")
-
-#fos.write('successful_pairs["F3C_XX_NLO_SMt"]=[]\n') 
-#fos.write('successful_pairs["F3C_XX_LO_SMt"]=[]\n')
-#fos.write('successful_pairs["F3C_YYQCD_NLO_SMt"]=[]\n')
+            
+            #f.write(pyenv_dir+"/python "+recast_dir+"/madanalysis5/bin/ma5 -R -s "+mgdir+"/"+recast_file+"fix \n")
+        
+        # if(out_store_dir != ''):
+        # f.write("mv "+output_file+" "+out_store_dir +" \n")
 
 
-for m in models:
-    fos.write('successful_pairs[\"'+m+'\"]=')
-    print( " pre succ pair ", successful_pairs[m], " \\ len ", len(successful_pairs[m]))
-    for S in SuccessMassPairs:
-        if not (S in successful_pairs[m]):
-            print(" adding ", S, " to successful pair list \\\ ")
-            successful_pairs[m].append(S)
-    #for S2 in successful_pairs:
-    fos.write(str(successful_pairs[m]))
+label = opt.job_label
+conf_file = opt.runmg
+gen_file = opt.runmg_generate
+recast_file = opt.runmg_recast
+sfs_file = opt.runmg_sfs
+dryrun = opt.dryrun
+output_file = opt.output_file
+out_store_dir = opt.out_store_dir 
 
-    print( " post succ pair ", successful_pairs[m], " \\ len ", len(successful_pairs[m]))
-    fos.write("\n")
+basedir="/afs/cern.ch/work/o/oiorio/DMMC/MG5_aMC_v2_9_15/"
+runner_dir=basedir+"/condor/work/"+label
 
-    fos.close()
-    if(opt.model == "f3c_yyqcd_nlo"):
-        print("cptime")
-        #s.system("cp successfu_pairs.py success_mass_pairs_f3c_yyqcd_nlo.py")
-        shutil.copy("success_mass_pairs.py","success_mass_pairs_f3c_yyqcd_nlo.py")
-    if(opt.model == "f3c_xx_nlo"):
-        shutil.copy("success_mass_pairs.py","success_mass_pairs_f3c_xx_nlo.py")
+#runner_dir
 
-        #f3v
-    if(opt.model == "f3v_yyqcd_nlo"):
-        shutil.copy("success_mass_pairs.py","success_mass_pairs_f3v_yyqcd_nlo.py")
-    if(opt.model == "f3v_xx_nlo"):
-        shutil.copy("success_mass_pairs.py","success_mass_pairs_f3v_xx_nlo.py")
-        #f3w
-    if(opt.model == "f3w_yyqcd_nlo"):
-        shutil.copy("success_mass_pairs.py","success_mass_pairs_f3w_yyqcd_nlo.py")
-    if(opt.model == "f3w_xx_nlo"):
-        shutil.copy("success_mass_pairs.py","success_mass_pairs_f3w_xx_nlo.py")
-        #f3s
-    if(opt.model == "f3s_xx_nlo"):
-        shutil.copy("success_mass_pairs.py","success_mass_pairs_f3s_xx_nlo.py")
-    if(opt.model == "f3s_xx_lo"):
-        shutil.copy("success_mass_pairs.py","success_mass_pairs_f3s_xx_lo.py")
+eosdir="/tmp/mjf-oiorio/"
+outeosdir="/eos/home-o/oiorio/DMMC/Events/"
+work_dir=eosdir+"/condor/work/"+label
+out_eosdir=outeosdir+"/condor/work/"+label
+#work_dir=basedir+"/condor/work/"+label#make local work directory 
 
-        #s3d
-    if(opt.model == "s3d_yyqcd_nlo"):
-        shutil.copy("success_mass_pairs.py","success_mass_pairs_s3d_yyqcd_nlo.py")
-    if(opt.model == "s3d_xx_nlo"):
-        shutil.copy("success_mass_pairs.py","success_mass_pairs_s3d_xx_nlo.py")
+if not os.path.exists(outeosdir+"condor/work"):
+    os.makedirs(outeosdir+"condor/work")
+if not os.path.exists(basedir+"condor/work"):
+    os.makedirs(basedir+"condor/work")
+if not os.path.exists(outeosdir+"condor/work/"+label):
+    os.makedirs(outeosdir+"condor/work/"+label)
 
-        #s3m
-    if(opt.model == "s3m_yyqcd_nlo"):
-        shutil.copy("success_mass_pairs.py","success_mass_pairs_s3m_yyqcd_nlo.py")
-    if(opt.model == "s3m_xx_nlo"):
-        shutil.copy("success_mass_pairs.py","success_mass_pairs_s3m_xx_nlo.py")
+if not os.path.exists(basedir+"condor/work/"+label):
+    os.makedirs(basedir+"condor/work/"+label)
+if not os.path.exists("condor/output"):
+    os.makedirs("condor/output")
+if not os.path.exists("condor/error"):
+    os.makedirs("condor/error")
+if not os.path.exists("condor/log"):
+    os.makedirs("condor/log")
+if(uid == 0):
+    print("Please insert your uid")
+    exit()
+if not os.path.exists("/tmp/x509up_u" + str(uid)):
+    os.system('voms-proxy-init --rfc --voms cms -valid 192:00')
+os.popen("cp /tmp/x509up_u" + str(uid) + " /afs/cern.ch/user/" + inituser + "/" + username + "/private/x509up")
+
+print("submitting job ...")
+print("job label = ", label)
+print("run instruction file =", conf_file)
+print("topology instruction file =", gen_file)
+print("output file =", output_file)
+print("output store directory =", out_store_dir)
+print("work directory =", work_dir)
+runner_writer(conf_file, gen_file,output_file,out_store_dir,runner_dir=runner_dir,work_dir=work_dir,recast_file=recast_file,sfs_file=sfs_file,out_eosdir=out_eosdir)
+print("runner.sh file, DONE!")
+sub_writer(label,work_dir=work_dir,basedir=basedir,runner_dir=runner_dir)
+#time.sleep(10)
+#os.system("cd "+work_dir)
+print("condor.sub file, DONE!")
+if not dryrun: 
+    if(mode =="C"):
+        print()
+        os.system('source '+runner_dir+'/cleaner.sh &')
+    else:
+        print()
+        os.popen('condor_submit '+runner_dir+'/condor.sub')
     
+#os.system("cd -")
+print("DONE!")

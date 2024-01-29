@@ -14,7 +14,7 @@ set istr = 2
 set MYS3u3 = 1300
 set decay 5920006 Auto
 set iseed=19858
-set nevents=100
+set nevents=1000
 set pdlabel=lhapdf
 set lhaid=331700
 set ptj=10
