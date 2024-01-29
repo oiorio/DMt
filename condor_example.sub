@@ -1,0 +1,16 @@
+Proxy_filename          = x509up
+Proxy_path              = /afs/cern.ch/user/o/oiorio/private/$(Proxy_filename)
+universe                = vanilla
+x509userproxy           = $(Proxy_path)
+use_x509userproxy       = true
+should_transfer_files   = YES
+when_to_transfer_output = ON_EXIT
+transfer_input_files    = $(Proxy_path)
+MY.WantOS               = "el7" 
++JobFlavour             = "testmatch"
+executable              = /afs/cern.ch/work/o/oiorio/DMMC/MG5_aMC_v2_9_15//condor/work/F3C_XX_NLO_SMt_MY1000_MX400/runner_example.sh
+arguments               = 
+output                  = /afs/cern.ch/work/o/oiorio/DMMC/MG5_aMC_v2_9_15//condor/output/F3C_XX_NLO_SMt_MY1000_MX400.out
+error                   = /afs/cern.ch/work/o/oiorio/DMMC/MG5_aMC_v2_9_15//condor/error/F3C_XX_NLO_SMt_MY1000_MX400.err
+log                     = /afs/cern.ch/work/o/oiorio/DMMC/MG5_aMC_v2_9_15//condor/log/F3C_XX_NLO_SMt_MY1000_MX400.log
+queue
