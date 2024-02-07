@@ -19,6 +19,7 @@ set pdlabel=lhapdf
 set lhaid=331700
 set ptj=50
 set use_syst=True
+set pt_min_pdg {56: 5}
 set systematics_program=systematics
 set etaj=5
 done

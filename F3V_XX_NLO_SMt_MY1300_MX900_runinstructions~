@@ -1,4 +1,4 @@
-launch DMtsimp/MG5Runs/F3W_XX_NLO_SMt_MY1300_MX900 
+launch DMtsimp/MG5Runs/F3V_XX_NLO_SMt_MY1300_MX900 
 analysis=OFF
 madspin=ON
 madspin=OFF
@@ -9,7 +9,7 @@ set req_acc_fo=0.001
 set lamF3u3x3 = 0.0001
 set lamF3d3x3 = 0
 set lamF3q3x3 = 0
-set MXw = 900
+set MXv = 900
 set MYF3u3 = 1300
 set decay 5920006 Auto
 set iseed=25421
@@ -19,7 +19,6 @@ set pdlabel=lhapdf
 set lhaid=331700
 set ptj=50
 set use_syst=True
-set pt_min_pdg {58: 5}
 set systematics_program=systematics
 set etaj=5
 done

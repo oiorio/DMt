@@ -26,7 +26,6 @@ elif username == 'acagnott':
     uid = 140541
 elif username == 'oiorio':
     uid = 31365
-#da generalizzare 
 
 mode=opt.mode
 
@@ -93,7 +92,7 @@ def editrecastfile(summary,recast_file):
 def runner_writer(conf_file, gen_file,output_file,out_store_dir,
                   mgdir="/afs/cern.ch/work/o/oiorio/DMMC/MG5_aMC_v2_9_15",
                   recast_file=None,sfs_file=None,xsec_file_format="parton_systematics",pyenvdir="py3_env2",recast_dir="/afs/cern.ch/work/o/oiorio/DMMC/MG5_aMC_v2_9_15/MA5/",
-                  runner_dir=".",work_dir=".", out_eosdir=".", mode= mode):
+                  runner_dir=".",work_dir=".", out_eosdir=".", mode= mode, useMadSTR=False):
     os.system("rm "+runner_dir+"/runner.sh")
     f = open(runner_dir+"/runner.sh", "w")
     #    if not os.path.exists(work_dir):
@@ -109,10 +108,21 @@ def runner_writer(conf_file, gen_file,output_file,out_store_dir,
         f.write("mkdir -p " + out_eosdir + "\n")
     f.write("cd "+work_dir +" \n")
     if "G" in mode:
-        f.write("python2.7 "+mgdir+"/bin/mg5_aMC "+mgdir+"/"+conf_file+"\n")
-        f.write("sleep 5 \n")
-        f.write("python2.7 "+mgdir+"/bin/mg5_aMC "+mgdir+"/"+gen_file+"\n")
-        f.write("sleep 5 \n")
+        if not(useMadSTR):
+            f.write("python2.7 "+mgdir+"/bin/mg5_aMC "+mgdir+"/"+conf_file+"\n")
+            f.write("sleep 5 \n")
+            if ("_NLO_" in gen_file):
+                f.write("python2.7 "+mgdir+"/bin/mg5_aMC "+mgdir+"/"+gen_file+"\n")
+            if ("_LO_" in gen_file):
+                f.write("python2.7 "+mgdir+"/bin/mg5_aMC < "+mgdir+"/"+gen_file+"\n")
+            f.write("sleep 5 \n")
+        else:
+            f.write("python2.7 "+mgdir+"/bin/mg5_aMC --mode=MadSTR "+mgdir+"/"+conf_file+"\n")
+            f.write("sleep 5 \n")
+            f.write("cd "+workdir+"\n")
+            f.write("cp "+workdir+"/bin/mg5_aMC "+mgdir+"/"+gen_file+" . \n")
+            f.write("python2.7 "+workdir+"/bin/aMCatNLO "+gen_file+"\n")
+            f.write("sleep 5 \n")
     f.write("source /cvmfs/sw.hsf.org/spackages7/key4hep-stack/2023-04-08/x86_64-centos7-gcc11.2.0-opt/urwcv/setup.sh \n")
     if (not (recast_file is None) and "M" in mode):
         if not recast_file=='':
@@ -290,8 +300,8 @@ runner_dir=basedir+"/condor/work/"+label
 
 #runner_dir
 
-eosdir="/tmp/mjf-oiorio/" #da generalizzare 
-outeosdir="/eos/home-o/oiorio/DMMC/Events/" #da generalizzare 
+eosdir="/tmp/mjf-oiorio/"
+outeosdir="/eos/home-o/oiorio/DMMC/Events/"
 work_dir=eosdir+"/condor/work/"+label
 out_eosdir=outeosdir+"/condor/work/"+label
 #work_dir=basedir+"/condor/work/"+label#make local work directory 

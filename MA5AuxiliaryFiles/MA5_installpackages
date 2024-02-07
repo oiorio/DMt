@@ -1,0 +1,4 @@
+install zlib
+install gnuplot
+install fastjet
+
